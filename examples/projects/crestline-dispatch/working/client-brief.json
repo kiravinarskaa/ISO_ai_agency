@@ -1,0 +1,79 @@
+{
+  "client_objective": "The sender requests an ISO/IEC 27001:2022 readiness review and a Word management report, including a prioritized improvement plan within six weeks of an agreed kickoff. All statements are unverified client-provided information.",
+  "scope": "Proposed scope: development, hosting, operation, and support of the platform, including its dispatch web application and cloud production database, central identity and business email service, source repositories and deployment pipeline, employee laptops and shared dispatch workstations, remote access service, cloud backups, and security logging. Customer-operated networks are proposed exclusions requiring review. The sender says cloud provider, hosting region, and supplier responsibility boundaries need confirmation. This proposed scope is unverified.",
+  "systems": [
+    "Dispatch and delivery-tracking platform (sender says it provides dispatch and delivery-tracking software to business customers; unverified)",
+    "Dispatch web application (proposed scope; unverified)",
+    "Cloud production database (proposed scope; unverified)",
+    "Central identity service (proposed scope; unverified)",
+    "Business email service (proposed scope; unverified)",
+    "Source repositories (proposed scope; unverified)",
+    "Deployment pipeline (proposed scope; unverified)",
+    "36 employee laptops (proposed scope; unverified)",
+    "Six shared dispatch workstations (proposed scope; unverified)",
+    "Remote access service (proposed scope; unverified)",
+    "Cloud backups (proposed scope; unverified)",
+    "Security logging (proposed scope; unverified)",
+    "Customer-operated networks (proposed exclusion requiring review; unverified)"
+  ],
+  "locations": [
+    "An office in Tashkent (sender-reported; unverified)",
+    "Remote work within Uzbekistan (sender-reported; unverified)"
+  ],
+  "deadline": "Sender requests a prioritized improvement plan within six weeks of an agreed kickoff; no kickoff date has been approved. Unverified.",
+  "assumptions": [],
+  "missing_information": [
+    "Confirm the organization's identity and the sender's authority; do not infer either from display name or signature.",
+    "Confirm the proposed scope, including customer-operated network exclusions.",
+    "Identify the cloud provider, hosting region, and supplier responsibility boundaries.",
+    "Agree a kickoff date to anchor the requested six-week improvement-plan timeframe.",
+    "Confirm the specific Word report requirements and management audience expectations if these differ from the requested elements in the email."
+  ],
+  "project_id": "DEMO-crestline-dispatch",
+  "evidence_status": "FICTIONAL ORGANIZATION; SYNTHETIC TEST EVIDENCE; NOT VERIFIED",
+  "known_facts": [
+    {
+      "fact": "The sender requests an ISO/IEC 27001:2022 readiness review and a Word report for management.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The email claims the organization is Crestline Dispatch Solutions and says it provides dispatch and delivery-tracking software to business customers. This is a claimed organization, not verified identity.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports 36 employees working from an office in Tashkent and remotely within Uzbekistan.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender says the platform processes customer contact details, delivery addresses, and shipment records.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender proposes scope covering platform development, hosting, operation, and support, with the systems listed in the brief; customer-operated networks are proposed exclusions requiring review.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender says a prioritized improvement plan is wanted within six weeks after an agreed kickoff, and no kickoff date has been approved.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender says cloud provider, hosting region, and supplier responsibility boundaries need confirmation.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The source email includes reported governance, access management, recovery, technical security, monitoring, incident response, awareness, and remediation information; all details remain unverified client statements and are not treated here as validated findings.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    }
+  ],
+  "sources": [
+    "client-input/synthetic-evidence.md"
+  ]
+}

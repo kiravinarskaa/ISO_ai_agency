@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "projectId": "DEMO-cedar-lantern",
+  "runId": "demo-run",
+  "finalStatus": "completed",
+  "notice": "Sanitized historical execution summary, not a runnable production manifest.",
+  "agents": [
+    {
+      "employeeId": "client-manager",
+      "routine": "client-intake",
+      "status": "reused-validated",
+      "validation": {
+        "valid": true
+      }
+    },
+    {
+      "employeeId": "isms-readiness-planner",
+      "routine": "prepare-readiness-roadmap",
+      "status": "completed",
+      "validation": {
+        "valid": true
+      }
+    },
+    {
+      "employeeId": "requirements-evidence-specialist",
+      "routine": "build-evidence-register",
+      "status": "completed",
+      "validation": {
+        "valid": true
+      }
+    },
+    {
+      "employeeId": "technical-controls-analyst",
+      "routine": "review-technical-controls",
+      "status": "completed",
+      "validation": {
+        "valid": true
+      }
+    },
+    {
+      "employeeId": "security-awareness-specialist",
+      "routine": "prepare-awareness-plan",
+      "status": "completed",
+      "validation": {
+        "valid": true
+      }
+    },
+    {
+      "employeeId": "corrective-action-specialist",
+      "routine": "build-corrective-action-register",
+      "status": "completed",
+      "validation": {
+        "valid": true
+      }
+    },
+    {
+      "employeeId": "readiness-metrics-analyst",
+      "routine": "summarize-readiness-metrics",
+      "status": "completed",
+      "validation": {
+        "valid": true
+      }
+    },
+    {
+      "employeeId": "project-manager",
+      "routine": "coordinate-readiness-project",
+      "status": "completed",
+      "validation": {
+        "valid": true
+      }
+    }
+  ]
+}

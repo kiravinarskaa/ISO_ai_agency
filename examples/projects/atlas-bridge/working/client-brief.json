@@ -1,0 +1,101 @@
+{
+  "client_objective": "The sender requests an ISO/IEC 27001:2022 readiness review and a consolidated Word report for management covering important issues, business impact, evidence confidence, unresolved questions, recommendations, remediation planning, specialist work, and customer remediation.",
+  "scope": "The sender proposes review of development, hosting, operation, and support of its customer support platform, including the support web application and cloud database, central identity and business email service, source repositories and deployment pipeline, employee laptops, remote access, cloud backups, and security logging. Customer-managed systems are proposed exclusions requiring review. Cloud hosting region and supplier responsibility boundaries require confirmation.",
+  "systems": [
+    "Customer support web application and platform storing customer contact information, support conversations, and service records",
+    "Cloud database",
+    "Central identity service",
+    "Business email service",
+    "Source repositories",
+    "Deployment pipeline",
+    "55 employee laptops",
+    "Remote access",
+    "Cloud backups",
+    "Security logging"
+  ],
+  "locations": [
+    "One office in Tashkent",
+    "Remote working within Uzbekistan"
+  ],
+  "deadline": "The sender requests an initial improvement plan within six weeks of an agreed kickoff; no kickoff date has been confirmed.",
+  "assumptions": [],
+  "missing_information": [
+    "Confirm the kickoff date and the requested six-week improvement-plan timing.",
+    "Confirm the cloud hosting region and supplier responsibility boundaries.",
+    "Review and confirm whether customer-managed systems are excluded from the proposed scope.",
+    "Confirm the claimed organization and sender authority through the appropriate intake process; the organization name and sender details are claims in the email, not verified identity evidence.",
+    "Obtain supporting records for reported account, MFA, privileged access, backup and restoration, vulnerability, patching, secret revocation, monitoring, incident response, governance, asset inventory, training, and remediation details before treating them as verified.",
+    "Obtain affected versions and technical validation records for the reported scan findings, without requesting or reproducing the application secret.",
+    "Clarify the unexplained enabled-account difference and administrator MFA coverage.",
+    "Clarify recovery objectives and evidence of a successful restoration exercise.",
+    "Clarify the unusual administrator sign-ins and any investigation evidence; unauthorized access is not established by the source.",
+    "Confirm the desired management report delivery date and any additional scope boundaries."
+  ],
+  "project_id": "DEMO-atlas-bridge",
+  "evidence_status": "FICTIONAL ORGANIZATION; SYNTHETIC TEST EVIDENCE; NOT VERIFIED",
+  "known_facts": [
+    {
+      "fact": "The email requests an ISO/IEC 27001:2022 readiness review and a final Word report for management.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender describes the organization as providing customer support software to business clients, with 55 employees working from one office in Tashkent and remotely within Uzbekistan.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The described platform stores customer contact information, support conversations, and service records.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The requested scope covers development, hosting, operation, and support of the platform and the systems listed in scope.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports 64 enabled accounts against 55 current employees, including six accounts that appear to belong to former staff; the remaining difference is unexplained. MFA is recorded for 42 accounts, administrator coverage is unknown, two administrator accounts are shared, and no privileged access review is documented.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports daily backups, a failed last restoration exercise because the team could not access the required encryption key, no subsequently documented successful restoration, and no approved recovery objectives.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports a scan summary with two critical and nine high-severity findings, four internet-facing findings more than 45 days old, no supplied affected versions or technical validation records, seven laptops with overdue security updates, and an application secret committed to a private repository whose revocation is unconfirmed. The sender asks that the secret not be requested or reproduced.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports 14-day log retention without a documented review schedule, unusual administrator sign-ins without an investigation record, and a draft incident response procedure that has not been exercised; the sender states unauthorized access has not been established.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports that the security policy awaits management approval, the asset inventory lists 46 of 55 laptops, the risk register has not been reviewed for a year, and no approved risk treatment plan, Statement of Applicability, internal audit report, or management review minutes were supplied.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports training completion for 33 of 55 employees, with no documented refresher schedule or administrator-specific training.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender reports that IT disabled four former-employee accounts and updated five laptops; supporting records and independent closure checks are not available, so these remain reported remediation rather than verified fixes.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The sender requests that missing evidence be distinguished from proof that a control is absent, that exploitation not be assumed, and that no compliance score be assigned without a supported method.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    }
+  ],
+  "sources": [
+    "client-input/synthetic-evidence.md"
+  ]
+}

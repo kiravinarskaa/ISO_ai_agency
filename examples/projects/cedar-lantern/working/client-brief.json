@@ -1,0 +1,52 @@
+{
+  "client_objective": "The sender requests ISO/IEC 27001:2022 readiness preparation, including an initial readiness plan within six weeks, identification of missing evidence, assessment of supplied practices, awareness recommendations, prioritized corrective actions, qualified readiness measures, and a final test report. These are unverified statements from explicitly synthetic test evidence.",
+  "scope": "The sender describes a fictional customer portal and its development, hosting, and support, including staff devices, cloud infrastructure, and supporting business processes. The sender proposes excluding customer-owned devices and customer internal networks, and asks that the appropriateness of those exclusions be reviewed. Unverified.",
+  "systems": [
+    "Unverified client statement (client-input/synthetic-evidence.md): portal, including staff devices, cloud infrastructure, and supporting"
+  ],
+  "locations": [
+    "Unverified client statement (client-input/synthetic-evidence.md): Size: 35 employees, one office, and remote workers"
+  ],
+  "deadline": "The sender requests an initial readiness plan within six weeks; the reference date for that timeline is not specified. Unverified.",
+  "assumptions": [],
+  "missing_information": [
+    "Specific systems, services, platforms, and infrastructure are not identified by name; systems remains an empty array.",
+    "Specific office location(s), remote-work locations, and geographic boundaries are not identified; locations remains an empty array.",
+    "The reference date for the requested six-week initial-plan timeline is unspecified.",
+    "The proposed scope boundaries and exclusions require clarification and review; no scope suitability conclusion is established by this intake.",
+    "No customer clarification replies or supporting attachments are present in the staged input.",
+    "All organization, scope, size, timeline, and practice details are explicitly synthetic and unverified; real client identity and real-world applicability are not established."
+  ],
+  "project_id": "DEMO-cedar-lantern",
+  "evidence_status": "FICTIONAL ORGANIZATION; SYNTHETIC TEST EVIDENCE; NOT VERIFIED",
+  "known_facts": [
+    {
+      "fact": "The email requests ISO/IEC 27001:2022 readiness preparation for an organization it names as Cedar Lantern Services. The email explicitly labels the request and evidence fictional and synthetic; organization identity is not verified.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The email describes business software services; 35 employees; one office; and remote workers. All are unverified synthetic statements.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The email describes a draft information security policy without recorded management approval; security coordination by an operations manager without formally documented responsibilities; an asset inventory listing 30 of 35 laptops; no completed risk assessment, risk treatment plan, or Statement of Applicability; and no completed internal audit or management review. All are unverified synthetic statements.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The email describes centrally managed staff accounts, MFA enabled for 28 of 35 employees, five administrators with privileged accounts and no recent access review, daily cloud backups with the last documented restoration test nine months earlier, expected monthly device updates without a consolidated patch report, 30-day security log retention without documented regular review, and an incident response draft without an exercise. All are unverified synthetic statements.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    },
+    {
+      "fact": "The email describes short security briefings for new starters, training completion recorded for 22 of 35 employees, and no documented refresher schedule or phishing reporting exercise. All are unverified synthetic statements.",
+      "source": "client-input/synthetic-evidence.md",
+      "verification": "unverified synthetic test evidence"
+    }
+  ],
+  "sources": [
+    "client-input/synthetic-evidence.md"
+  ]
+}
