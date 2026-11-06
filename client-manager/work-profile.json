@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "objective": "Accurate client coordination for ISO/IEC 27001 certification-readiness projects",
+  "standup": "client-input-review",
+  "reviewer": "project-handoff",
+  "routines": {
+    "client-intake": {
+      "kind": "research",
+      "expected_when": "A client readiness request is available and the project brief is absent or needs a source-backed update.",
+      "acceptance": "The brief separates sourced facts, assumptions, and missing fields.",
+      "fallback": "Reconcile supplied information and list unresolved scope questions.",
+      "recovery": "Refresh current project sources and continue unfinished useful work within the routine scope."
+    },
+    "client-input-review": {
+      "kind": "review",
+      "expected_when": "A project has not yet had its supplied inputs inventoried for this review period.",
+      "acceptance": "Every expected category is marked available, partial, or missing with evidence paths.",
+      "fallback": "Refresh the inventory from the current client-input directory.",
+      "recovery": "Refresh current project sources and continue unfinished useful work within the routine scope."
+    },
+    "client-clarification-draft": {
+      "kind": "produce",
+      "expected_when": "A current missing-information review contains unresolved client questions.",
+      "acceptance": "The local draft asks concise questions tied to identified gaps.",
+      "fallback": "Refresh questions from the latest missing-information review.",
+      "recovery": "Refresh current project sources and continue unfinished useful work within the routine scope."
+    },
+    "project-handoff": {
+      "kind": "produce",
+      "expected_when": "The client brief and input review are current enough for Project Manager handoff.",
+      "acceptance": "The structured handoff has all required fields and evidence paths.",
+      "fallback": "Refresh the handoff from current project artifacts.",
+      "recovery": "Refresh current project sources and continue unfinished useful work within the routine scope."
+    },
+    "client-progress-update": {
+      "kind": "produce",
+      "expected_when": "Current status or approved specialist output supports a client update.",
+      "acceptance": "The draft accurately covers completed work, open issues, blockers, and next actions.",
+      "fallback": "Refresh from approved current sources.",
+      "recovery": "Refresh current project sources and continue unfinished useful work within the routine scope."
+    },
+    "final-readiness-delivery": {
+      "kind": "produce",
+      "expected_when": "Approved final readiness outputs are available for delivery.",
+      "acceptance": "The draft lists verified approved outputs and states readiness preparation only.",
+      "fallback": "Recheck output approval and prepare the local delivery draft.",
+      "recovery": "Refresh current project sources and continue unfinished useful work within the routine scope."
+    }
+  }
+}

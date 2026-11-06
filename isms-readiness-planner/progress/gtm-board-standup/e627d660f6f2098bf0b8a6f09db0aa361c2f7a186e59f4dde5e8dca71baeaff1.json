@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "routine": "gtm-board-standup",
+  "period": "2026-10-28",
+  "observed_at": "2026-10-28T14:40:05.519Z",
+  "work_id": "daily-board-reconciliation",
+  "expected": true,
+  "delivery": "completed",
+  "business": "unmeasured",
+  "summary": "First board reconciled from current intake proposals, readiness verified, and a sourced brief selects the next prototype evaluation task. The dashboard-facing digest omits the local machine path while preserving its source reference.",
+  "artifacts": [
+    "brief-latest.md",
+    "briefs/brief-2026-10-28.md",
+    "board/board.json",
+    "board/LAUNCH-BOARD.md",
+    "gtm-latest.md"
+  ],
+  "blockers": [
+    {
+      "key": "owned-prototype-destination",
+      "step": "Verify C-001",
+      "kind": "input",
+      "owner": "member",
+      "evidence": "strategy/offer.md#Landing URL; PHISHGUARD-CONTEXT.md; no URL or downstream live event found",
+      "verified_at": "2026-10-28T14:39:40.804Z",
+      "next_action": "Record the owned prototype destination in strategy/offer.md",
+      "next_check": "Next eligible period for the owning routine"
+    },
+    {
+      "key": "scheduled-execution-proof",
+      "step": "Verify C-005",
+      "kind": "dependency",
+      "owner": "gtm-intake-and-dashboard",
+      "evidence": "state/gtm-intake-and-dashboard.json schedule_registered=false; runlog.jsonl has manual guard skips only",
+      "verified_at": "2026-10-28T14:39:40.804Z",
+      "next_action": "Use this manual proof for installation continuation, register jobs, and verify a real scheduled fire",
+      "next_check": "Next eligible period for the owning routine"
+    },
+    {
+      "key": "contactable-signal-supply",
+      "step": "Check outreach readiness",
+      "kind": "evidence",
+      "owner": "gtm-signal-sweep",
+      "evidence": "crm/signals.jsonl empty; crm/contacts.csv contains only header and marker",
+      "verified_at": "2026-10-28T14:39:40.804Z",
+      "next_action": "Research signal sources on the next eligible sweep; member fallback is contacts.csv above its marker",
+      "next_check": "Next eligible period for the owning routine"
+    }
+  ],
+  "next_action": "gtm-launch-step-runner prepares C-003, the prototype evaluation protocol, during its next eligible window.",
+  "next_check": "Next eligible gtm-board-standup period under SCHEDULE.md",
+  "verified_artifacts": [
+    {
+      "path": "brief-latest.md",
+      "sha256": "b517a7e1bcf95284f008797f6d4bc1cdadf60889ed6b89b33dc5268f3c2f0f5d"
+    },
+    {
+      "path": "briefs/brief-2026-10-28.md",
+      "sha256": "b517a7e1bcf95284f008797f6d4bc1cdadf60889ed6b89b33dc5268f3c2f0f5d"
+    },
+    {
+      "path": "board/board.json",
+      "sha256": "98291e244477b04f955fa525c8e175584e7982ebc8d50564fb95f426b6d4dc68"
+    },
+    {
+      "path": "board/LAUNCH-BOARD.md",
+      "sha256": "f5237a41a8517f5de6b7fc9825bdd67b71dba26caf296b10c408c671fa699e51"
+    },
+    {
+      "path": "gtm-latest.md",
+      "sha256": "77c1eebad16ecd4ff1c2643a6f2c7f2807b42aeb5deb4016307a465b63c94656"
+    }
+  ]
+}

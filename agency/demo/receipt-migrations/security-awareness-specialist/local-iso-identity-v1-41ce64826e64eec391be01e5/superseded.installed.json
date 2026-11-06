@@ -1,0 +1,60 @@
+{
+  "schema": "ai-employee-receipt/1",
+  "receipt_provenance": "local-deterministic-identity-migration-v1",
+  "slug": "security-awareness-specialist",
+  "version": "1.9.0",
+  "standard": "1.5",
+  "installed_on": "2026-10-29",
+  "files": {
+    "employee.json": "bb3316b88e7b5d96",
+    "AGENTS.md": "1b3a79cb04425a9a",
+    "CONTRACT.md": "d93792f3d084229c",
+    "ROLE.md": "5e07575b7ffa732c",
+    "SCHEDULE.md": "eb038da5728fcfab",
+    "work-profile.json": "e4d407c4470ce654",
+    "routines/prepare-awareness-plan/SKILL.md": "8fccb7e46c46c439"
+  },
+  "pending": [],
+  "migration": {
+    "method": "local-deterministic-identity-migration-v1",
+    "migration_id": "local-iso-identity-v1-6fa5d327f7a915f1db958ca5",
+    "migrated_at": "2026-11-04T18:52:01.226Z",
+    "previous_identity": {
+      "slug": "social-media-employee",
+      "name": "Social Media Employee",
+      "role": "Audience and distribution"
+    },
+    "current_identity": {
+      "slug": "security-awareness-specialist",
+      "name": "Security Awareness Specialist",
+      "role": "Create an organizational security-awareness training plan.",
+      "routines": [
+        "prepare-awareness-plan"
+      ]
+    },
+    "original_receipt": {
+      "path": "agency/demo/receipt-migrations/security-awareness-specialist/local-iso-identity-v1-6fa5d327f7a915f1db958ca5/original.installed.json",
+      "sha256": "daaea3f096810cfcf792fdb6c18f0a5ae1bce227cbfd74f76d42697e2fad2335"
+    },
+    "baseline_identity": {
+      "path": "security-awareness-specialist/.upgrade/baseline/employee.json",
+      "sha256": "d0c0b657fec26220a5b0a9f404c6d49a6990d030729fd40e15500495c0a2dad4"
+    },
+    "verification": {
+      "result": "verified",
+      "verified_at": "2026-11-04T18:52:01.226Z",
+      "algorithm": "SHA-256",
+      "sha256": {
+        "employee.json": "bb3316b88e7b5d96d3afe08b58742b440b5bbe9584b5e6379b38c8b7a336e4ef",
+        "AGENTS.md": "1b3a79cb04425a9a7f9b7ed6bfecaa391fbdaf29dae81928b49cdc258b0f02a1",
+        "CONTRACT.md": "d93792f3d084229c0621cbb73f2cd1deb674913a42567bb77fe9740843226636",
+        "ROLE.md": "5e07575b7ffa732cc7aad0196b9067b599e55e7407be3c84740039ab75981324",
+        "SCHEDULE.md": "eb038da5728fcfaba3fd1cd9f285217c6983485ee31f0ea3e43c63b6859aab24",
+        "work-profile.json": "e4d407c4470ce654806955a29171fc037d83322fe4cb391a9e0cb378ca329840",
+        "routines/prepare-awareness-plan/SKILL.md": "8fccb7e46c46c4393f771402729da227888bae573ab143a56a9ae6bcc72c7954"
+      }
+    },
+    "audit_record": "agency/demo/receipt-migrations/security-awareness-specialist/local-iso-identity-v1-6fa5d327f7a915f1db958ca5/migration.json",
+    "audit_record_sha256": "07eff8950de02220850e4abb248dffec50881cf87b2645708155f77aaad929dd"
+  }
+}

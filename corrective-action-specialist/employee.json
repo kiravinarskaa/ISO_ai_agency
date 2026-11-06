@@ -1,0 +1,180 @@
+﻿{
+    "schema":  "ai-employee/1",
+    "slug":  "corrective-action-specialist",
+    "name":  "Corrective Action Specialist",
+    "role":  "Consolidate specialist gaps into a prioritized corrective-action register.",
+    "version":  "1.9.0",
+    "standard":  "1.5",
+    "repository":  "https://github.com/markfulton/ai-employees",
+    "license":  "MIT",
+    "requires":  {
+                     "node":  "\u003e=18",
+                     "harness":  [
+                                     "claude-code",
+                                     "openclaw",
+                                     "hermes",
+                                     "opencode",
+                                     "grok-bot",
+                                     "codex",
+                                     "antigravity",
+                                     "pi",
+                                     "cline",
+                                     "qwen-code",
+                                     "deepseek"
+                                 ]
+                 },
+    "connections":  [
+                        {
+                            "capability":  "helpdesk.read",
+                            "providers":  [
+                                              "intercom",
+                                              "help-scout",
+                                              "front",
+                                              "zoho-desk"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "helpdesk.note",
+                            "providers":  [
+                                              "front",
+                                              "intercom",
+                                              "gmail"
+                                          ],
+                            "required":  false,
+                            "readonly":  false
+                        },
+                        {
+                            "capability":  "mail.read",
+                            "providers":  [
+                                              "gmail",
+                                              "microsoft-365"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "community.read",
+                            "providers":  [
+                                              "slack",
+                                              "discord-api"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "billing.read",
+                            "providers":  [
+                                              "stripe-restricted-key",
+                                              "paddle",
+                                              "chargebee"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "usage.read",
+                            "providers":  [
+                                              "posthog",
+                                              "supabase-readonly"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "reviews.read",
+                            "providers":  [
+                                              "trustpilot-api",
+                                              "expo"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "helpcentre.read",
+                            "providers":  [
+                                              "intercom",
+                                              "notion"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        }
+                    ],
+    "routines":  [
+                     {
+                         "id":  "build-corrective-action-register",
+                         "days":  "mon-fri",
+                         "fire":  "00:01",
+                         "window_start":  "00:00",
+                         "window_end":  "23:59",
+                         "period_key":  "YYYY-MM-DD",
+                         "budget":  "30 min",
+                         "browser":  "never"
+                     }
+                 ],
+    "files":  {
+                  "kit":  [
+                              "AGENTS.md",
+                              "CAPABILITIES.md",
+                              "CHANGELOG.md",
+                              "CONTRACT.md",
+                              "INSTALL-PROMPT.md",
+                              "README.md",
+                              "ROLE.md",
+                              "VERSION",
+                              ".gitignore",
+                              "employee.json",
+                              "recipes/BROWSER-RECIPES.md",
+                              "run/**",
+                              "scripts/**",
+                              "examples/**",
+                              "WORK-CYCLE.md",
+                              "work-profile.json",
+                              "routines/build-corrective-action-register/SKILL.md"
+                          ],
+                  "merge":  [
+                                "SCHEDULE.md"
+                            ],
+                  "member":  [
+                                 "RELEASES.md",
+                                 "state/**",
+                                 "board/**",
+                                 "crm/**",
+                                 "queue/**",
+                                 "strategy/**",
+                                 "briefs/**",
+                                 "scoreboard/**",
+                                 "dashboard/**",
+                                 "improvements/**",
+                                 "archive/**",
+                                 "paid/**",
+                                 "fleet/**",
+                                 "drafts/**",
+                                 "calendar/**",
+                                 "run/*.log",
+                                 "recipes/*.json",
+                                 "runlog.jsonl",
+                                 "*-latest.md",
+                                 ".installed.json",
+                                 "desk/**",
+                                 "tickets/**",
+                                 "risk/**",
+                                 "macros/**",
+                                 "help/**",
+                                 "report/**",
+                                 "PAUSED",
+                                 "schedule-commands.txt",
+                                 "progress/**",
+                                 "experiments/**",
+                                 "handoffs/**",
+                                 ".upgrade/**"
+                             ]
+              },
+    "notes":  {
+                  "merge":  "SCHEDULE.md carries the shape the kit ships and the days, windows and budgets the member owns. An upgrade reports a changed shape and never rewrites the row values.",
+                  "member":  "Everything under member is the business the employee has been running: its evidence, its ledgers, its learned browser flows and its own field repairs. An upgrade that overwrites any of it has destroyed work that exists nowhere else.",
+                  "recipes":  "recipes/BROWSER-RECIPES.md ships with the kit. Every recipes/*.json is learned on the member\u0027s own screens by the routine that owns it, so it is member data.",
+                  "phase1":  "One ISO readiness demonstration routine active; former routine files retained but inactive."
+              }
+}

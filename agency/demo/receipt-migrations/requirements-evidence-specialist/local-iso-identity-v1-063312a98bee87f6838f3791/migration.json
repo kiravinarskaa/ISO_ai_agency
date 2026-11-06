@@ -1,0 +1,54 @@
+{
+  "schema": "agency-employee-receipt-migration/1",
+  "employee_id": "requirements-evidence-specialist",
+  "method": "local-deterministic-identity-migration-v1",
+  "migration_id": "local-iso-identity-v1-063312a98bee87f6838f3791",
+  "migrated_at": "2026-11-04T18:56:29.544Z",
+  "previous_identity": {
+    "slug": "seo-employee",
+    "name": "SEO/AEO Employee",
+    "role": "Search, content and answer visibility"
+  },
+  "current_identity": {
+    "slug": "requirements-evidence-specialist",
+    "name": "Requirements and Evidence Specialist",
+    "role": "Map documented requirements, available evidence and missing evidence.",
+    "routines": [
+      "build-evidence-register"
+    ]
+  },
+  "original_receipt": {
+    "path": "agency/demo/receipt-migrations/requirements-evidence-specialist/local-iso-identity-v1-440469b0da159e3171b3b19c/original.installed.json",
+    "sha256": "b3d841718dab9e9b99db7e0b6ebf6f6f77299a9cac1050980199e54d5d22d6cc"
+  },
+  "baseline_identity": {
+    "path": "requirements-evidence-specialist/.upgrade/baseline/employee.json",
+    "sha256": "8f2757556a64f781e0ae23a596b1cfa05a45214f621dbb3564319ce8fe332ee7"
+  },
+  "verification": {
+    "result": "verified",
+    "verified_at": "2026-11-04T18:56:29.544Z",
+    "algorithm": "SHA-256",
+    "sha256": {
+      "employee.json": "674b960d8cdeb58a1cd324f63349a989662058d7719d6aefb9091dca6ab9975d",
+      "AGENTS.md": "f27007eda29664f4dfbada7421795bd9f551192c63fea771fe15c15a0a3a8b48",
+      "CONTRACT.md": "df90814e8e24c74b96838ae03017e9587e6778693dacb9f0ab03fad183ffd15a",
+      "ROLE.md": "4194bd7228ba0356b1a68fa92d071be29bdf4ff23484d00615650ccd7ebb7aa6",
+      "SCHEDULE.md": "2d2e67d62874883c7b62fef97bee16ef251725f947a45264aa863f41028743dd",
+      "work-profile.json": "190b2760b383792a385bb46107efae9a6b40aee99733f02b0bd976164bc8e6fc",
+      "routines/build-evidence-register/SKILL.md": "e6ccc8f59c6d89e7a2bc1769fb56b550052aeb8b1fb4505bf741d7aeca94c45a"
+    }
+  },
+  "audit_record": "agency/demo/receipt-migrations/requirements-evidence-specialist/local-iso-identity-v1-063312a98bee87f6838f3791/migration.json",
+  "supersedes": {
+    "migration_id": "local-iso-identity-v1-440469b0da159e3171b3b19c",
+    "receipt": {
+      "path": "agency/demo/receipt-migrations/requirements-evidence-specialist/local-iso-identity-v1-063312a98bee87f6838f3791/superseded.installed.json",
+      "sha256": "27ff008ffb8885dfd21e9715ed9792fe888bf4625dce869bad69624825e730e8"
+    },
+    "audit_record": {
+      "path": "agency/demo/receipt-migrations/requirements-evidence-specialist/local-iso-identity-v1-440469b0da159e3171b3b19c/migration.json",
+      "sha256": "016135d53576b61a0c1faf54e164fb3fa3a36a8c49586a438c21385d68eb5e6e"
+    }
+  }
+}

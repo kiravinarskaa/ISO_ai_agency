@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "routine": "web-inventory-refresh",
+  "period": "2026-10",
+  "observed_at": "2026-10-28T22:55:25+05:00",
+  "work_id": "phishguard-initial-maintenance-review",
+  "expected": true,
+  "delivery": "blocked",
+  "business": "unknown",
+  "summary": "Produced a sourced prototype health review; source inspection and live status remain unverified because no repository path was available and this machine could not connect to the public endpoint.",
+  "artifacts": [
+    "reports/phishguard-maintenance-2026-10-28.md"
+  ],
+  "blockers": [
+    {
+      "step": "inspect application source",
+      "owner": "member",
+      "next_check": "next manual review",
+      "key": "phishguard-source-repository",
+      "kind": "input",
+      "next_action": "Provide the local repository path or expose it under a readable code root",
+      "evidence": "No PhishGuard repository was located in inspected project folders",
+      "verified_at": "2026-10-28T22:55:25+05:00"
+    },
+    {
+      "step": "verify public endpoint reachability",
+      "owner": "environment",
+      "next_check": "next manual review",
+      "key": "phishguard-endpoint-network",
+      "kind": "access",
+      "next_action": "Retry from a network-enabled route and allow for the documented cold start",
+      "evidence": "Invoke-WebRequest reported a local remote connection failure",
+      "verified_at": "2026-10-28T22:55:25+05:00"
+    }
+  ],
+  "next_action": "Inspect the repository and repeat a read-only endpoint check when those inputs are available",
+  "next_check": "next manual review",
+  "verified_artifacts": [
+    {
+      "path": "reports/phishguard-maintenance-2026-10-28.md",
+      "sha256": "b437bc464178b94b79821bba1ec26c4cd916718773df3b406a532fd206a052e5"
+    }
+  ]
+}

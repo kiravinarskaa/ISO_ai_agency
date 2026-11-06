@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "workspaceRoot": "D:\\AgentOps",
+  "agencyRoot": "agency",
+  "projectsRoot": "agency/projects",
+  "orchestratorRoot": "agency/orchestrator",
+  "configRoot": "agency/config",
+  "queueRoot": "agency/orchestrator/queue",
+  "logRoot": "agency/orchestrator/logs",
+  "codex": {
+    "command": "codex.cmd",
+    "sandbox": "workspace-write",
+    "timeoutSeconds": 900,
+    "maxAttempts": 2,
+    "retryDelaySeconds": 15
+  },
+  "inputLimits": {
+    "maxFiles": 1000,
+    "maxFileBytes": 26214400,
+    "maxTotalBytes": 104857600
+  },
+  "eventWatcher": {
+    "debounceMs": 1200,
+    "stableCheckMs": 1000,
+    "recursive": true
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "schema": "ai-employee-receipt/1",
+  "receipt_provenance": "local-deterministic-identity-migration-v1",
+  "slug": "isms-readiness-planner",
+  "version": "1.9.0",
+  "standard": "1.5",
+  "installed_on": "2026-10-28",
+  "files": {
+    "employee.json": "12b4f36e9508ce7b",
+    "AGENTS.md": "ddb6e9e92542ee0a",
+    "CONTRACT.md": "f926cd2ac40def9c",
+    "ROLE.md": "6cbac79cf1e3ebd7",
+    "SCHEDULE.md": "13a768a6972083f5",
+    "work-profile.json": "367083d96522bef3",
+    "routines/prepare-readiness-roadmap/SKILL.md": "6c98c3be7864831f"
+  },
+  "pending": [],
+  "migration": {
+    "method": "local-deterministic-identity-migration-v1",
+    "migration_id": "local-iso-identity-v1-b5c77de30989512000e5d66f",
+    "migrated_at": "2026-11-04T18:56:29.544Z",
+    "previous_identity": {
+      "slug": "gtm-engineer",
+      "name": "GTM Engineer",
+      "role": "Go to market and launch"
+    },
+    "current_identity": {
+      "slug": "isms-readiness-planner",
+      "name": "ISMS Readiness Planner",
+      "role": "Define proposed ISMS scope, constraints and a readiness roadmap.",
+      "routines": [
+        "prepare-readiness-roadmap"
+      ]
+    },
+    "original_receipt": {
+      "path": "agency/demo/receipt-migrations/isms-readiness-planner/local-iso-identity-v1-eccd0afad34343b25596873c/original.installed.json",
+      "sha256": "42a7654f1c116df03804619b64372987f0ccce96ad603daefdca85e9b599b0ff"
+    },
+    "baseline_identity": {
+      "path": "isms-readiness-planner/.upgrade/baseline/employee.json",
+      "sha256": "837151680b2e2f957baa563dca41b523620087bbb3fc3d1609cca8e2e046382c"
+    },
+    "verification": {
+      "result": "verified",
+      "verified_at": "2026-11-04T18:56:29.544Z",
+      "algorithm": "SHA-256",
+      "sha256": {
+        "employee.json": "12b4f36e9508ce7bb4d16482faa367d09e85488eb6b5bdec7a720f01cce20487",
+        "AGENTS.md": "ddb6e9e92542ee0a058a959ecfab447cff00daee088214d8a9a74cdc32230d10",
+        "CONTRACT.md": "f926cd2ac40def9c63deeb340d07d9944e2719ca0880ffb94b77cb968f7bc37a",
+        "ROLE.md": "6cbac79cf1e3ebd7624d09bf90663041caa92fa6ceee7d776ef1d97bc7b5dfd6",
+        "SCHEDULE.md": "13a768a6972083f59056f5dc56abe6acf955a634b22eb9c057253434ea8f54a7",
+        "work-profile.json": "367083d96522bef3816eb1ae8d3593ca5c0bf9fd2abaaa6de1fbf3afa77244c6",
+        "routines/prepare-readiness-roadmap/SKILL.md": "6c98c3be7864831fdde7860694228bc47780c40aa29b12a9d4fc33b2ab8a2797"
+      }
+    },
+    "audit_record": "agency/demo/receipt-migrations/isms-readiness-planner/local-iso-identity-v1-b5c77de30989512000e5d66f/migration.json",
+    "supersedes": {
+      "migration_id": "local-iso-identity-v1-eccd0afad34343b25596873c",
+      "receipt": {
+        "path": "agency/demo/receipt-migrations/isms-readiness-planner/local-iso-identity-v1-b5c77de30989512000e5d66f/superseded.installed.json",
+        "sha256": "60120ac677acd336ed220d1c9aa3d740317c249b2eeb4fc3bc7341d836ad2327"
+      },
+      "audit_record": {
+        "path": "agency/demo/receipt-migrations/isms-readiness-planner/local-iso-identity-v1-eccd0afad34343b25596873c/migration.json",
+        "sha256": "be6c671d9c5418a73a3443f64713f1139e886f701c90cce7284b563bef32bf6d"
+      }
+    },
+    "audit_record_sha256": "e031a71f62e56a9ddf520cc799eb0003808101b8145bd51a561926b66de63e75"
+  }
+}

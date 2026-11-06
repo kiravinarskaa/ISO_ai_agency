@@ -1,0 +1,60 @@
+{
+  "name": "AgentOps Gmail Intake",
+  "nodes": [
+    {
+      "parameters": { "pollTimes": { "item": [{ "mode": "everyMinute" }] }, "filters": { "q": "in:inbox -from:me" } },
+      "id": "a43a1da2-d2d1-4214-9d33-92f20211f248",
+      "name": "New Gmail Message",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "credentials": { "gmailOAuth2": { "name": "SELECT YOUR GMAIL CREDENTIAL" } }
+    },
+    {
+      "parameters": { "operation": "get", "messageId": "={{ $json.id }}", "options": { "dataPropertyAttachmentsPrefixName": "attachment_" } },
+      "id": "c02a6837-150a-4b56-bc78-1e3a9491f170",
+      "name": "Get Full Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [460, 300],
+      "credentials": { "gmailOAuth2": { "name": "SELECT YOUR GMAIL CREDENTIAL" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $json;\nconst from = Array.isArray(m.from?.value) ? m.from.value[0] : null;\nconst senderEmail = from?.address || m.from?.text?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i)?.[0] || m.senderEmail;\nconst rawHeaders = m.headers || m.payload?.headers || [];\nconst headers = Array.isArray(rawHeaders) ? rawHeaders : Object.entries(rawHeaders).map(([name, value]) => ({ name, value }));\nconst rawAttachments = Array.isArray(m.attachments) ? m.attachments : Object.values(m.attachments || {});\nreturn [{ json: { messageId: String(m.id || m.messageId || ''), threadId: String(m.threadId || ''), senderEmail, sender: from?.name || senderEmail, subject: String(m.subject || ''), bodyText: String(m.textPlain || m.text || m.snippet || ''), receivedAt: m.internalDate ? new Date(Number(m.internalDate)).toISOString() : new Date().toISOString(), headers: headers.map(h => ({ name: h.name || h.key, value: h.value || h.valueText || '' })), attachments: rawAttachments.map(a => ({ filename: a.fileName || a.filename, mimeType: a.mimeType, size: a.fileSize || a.size })) } }];"
+      },
+      "id": "2fe0b071-7ee6-4235-a3b7-0565200d720e",
+      "name": "Normalize Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AGENCY_WORKER_URL + '/intake' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "={{ 'Bearer ' + $env.AGENCY_WORKER_TOKEN }}" }, { "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "31494118-6f89-44c6-ad33-a29a1b083ebd",
+      "name": "Stage on Local PC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "New Gmail Message": { "main": [[{ "node": "Get Full Email", "type": "main", "index": 0 }]] },
+    "Get Full Email": { "main": [[{ "node": "Normalize Message", "type": "main", "index": 0 }]] },
+    "Normalize Message": { "main": [[{ "node": "Stage on Local PC", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "ef9fce20-74d0-4ad6-9282-337870d75361",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

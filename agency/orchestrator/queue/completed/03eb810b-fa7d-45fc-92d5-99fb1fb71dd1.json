@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "03eb810b-fa7d-45fc-92d5-99fb1fb71dd1",
+  "dedupeKey": "87ec2d86ef9c7e068caea49b8ce31fd8be506e94f57480e73918d806b3aec8b2",
+  "inputFingerprint": "e67793282c7612fbd5946038e2bacbeea7556f4052f7f2f1c5ad86280167138a",
+  "inputFiles": [
+    {
+      "path": "client-input/gmail-intake.json",
+      "size": 8106
+    }
+  ],
+  "employeeId": "client-manager",
+  "routine": "client-intake",
+  "projectId": "INTAKE-462347a8d63bc88f2396e7bd",
+  "trigger": "event",
+  "status": "completed",
+  "createdAt": "2026-11-05T09:21:00.870Z",
+  "updatedAt": "2026-11-05T09:22:07.535Z",
+  "attempts": 1,
+  "maxAttempts": 2,
+  "requiredOutput": "working/client-brief.json",
+  "intakeStage": true,
+  "nextAttemptAt": null,
+  "communicationApproval": {
+    "required": false,
+    "status": "not_required"
+  },
+  "startedAt": "2026-11-05T09:21:19.206Z",
+  "finishedAt": "2026-11-05T09:22:07.535Z",
+  "output": "working/client-brief.json",
+  "failure": null
+}

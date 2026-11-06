@@ -1,0 +1,71 @@
+{
+  "schema": "ai-employee-receipt/1",
+  "receipt_provenance": "local-deterministic-identity-migration-v1",
+  "slug": "project-manager",
+  "version": "1.9.0",
+  "standard": "1.5",
+  "installed_on": "2026-10-29",
+  "files": {
+    "employee.json": "cb4a0ea332aed2d8",
+    "AGENTS.md": "1bd09e8d1e43798c",
+    "CONTRACT.md": "29b57964c67cd39b",
+    "ROLE.md": "e77ffedeeecefe03",
+    "SCHEDULE.md": "6026e6f68e400d0a",
+    "work-profile.json": "3434898c66faa3bc",
+    "routines/coordinate-readiness-project/SKILL.md": "4210268f0225e3ae"
+  },
+  "pending": [],
+  "migration": {
+    "method": "local-deterministic-identity-migration-v1",
+    "migration_id": "local-iso-identity-v1-e904120185025feea9e70bdb",
+    "migrated_at": "2026-11-04T19:39:49.945Z",
+    "previous_identity": {
+      "slug": "chief-of-staff",
+      "name": "Chief of Staff",
+      "role": "Oversight and strategy"
+    },
+    "current_identity": {
+      "slug": "project-manager",
+      "name": "Project Manager",
+      "role": "Coordinate the readiness project, verify specialist outputs and compile a consolidated report.",
+      "routines": [
+        "coordinate-readiness-project"
+      ]
+    },
+    "original_receipt": {
+      "path": "agency/demo/receipt-migrations/project-manager/local-iso-identity-v1-387fc2ca5a5191e3882950d4/original.installed.json",
+      "sha256": "692b6c9cafacada800b9618fd26677d4e6648a30293d9ed1c7c91b60b5eff040"
+    },
+    "baseline_identity": {
+      "path": "project-manager/.upgrade/baseline/employee.json",
+      "sha256": "9ba5e509f6f050dadbab464e89e09964ab8fd828917759df23f59ed6f653bc69"
+    },
+    "verification": {
+      "result": "verified",
+      "verified_at": "2026-11-04T19:39:49.945Z",
+      "algorithm": "SHA-256",
+      "sha256": {
+        "employee.json": "cb4a0ea332aed2d86b00a23f00aba1764dac19cf291d81834d3f1194e823daa6",
+        "AGENTS.md": "1bd09e8d1e43798c7ff918f93e55da5292ec9ba1fec0d216a26983362c48afc6",
+        "CONTRACT.md": "29b57964c67cd39ba63817f91f98fa3309a9d856e6b18814af90efb16f2b626e",
+        "ROLE.md": "e77ffedeeecefe034ed6ee5c9083314b1544941bef2b1f43eb62459434439786",
+        "SCHEDULE.md": "6026e6f68e400d0a121b59ec4008ba2e272ad051b95ce49179077feab9c752f2",
+        "work-profile.json": "3434898c66faa3bcdf74f63c34fd84077795a36f6f5be92a77313ce0070c8e9f",
+        "routines/coordinate-readiness-project/SKILL.md": "4210268f0225e3aed09254bf36bacd1ad2c06da4173afd56daf56bf101e57a2f"
+      }
+    },
+    "audit_record": "agency/demo/receipt-migrations/project-manager/local-iso-identity-v1-e904120185025feea9e70bdb/migration.json",
+    "supersedes": {
+      "migration_id": "local-iso-identity-v1-7399be4a6a8fc53d7154527a",
+      "receipt": {
+        "path": "agency/demo/receipt-migrations/project-manager/local-iso-identity-v1-e904120185025feea9e70bdb/superseded.installed.json",
+        "sha256": "267c3600cccdd1d7dd09f74eafc8225e1276c2ee9e128cca92a693868688269e"
+      },
+      "audit_record": {
+        "path": "agency/demo/receipt-migrations/project-manager/local-iso-identity-v1-7399be4a6a8fc53d7154527a/migration.json",
+        "sha256": "3bce146a90134ab835453ed6df7f9b0747e6e27d2e724c7c2c697af1924cc586"
+      }
+    },
+    "audit_record_sha256": "d375e7894365f28f21c73008cc65a76282a4403c494156d699c56cb2e87575ce"
+  }
+}

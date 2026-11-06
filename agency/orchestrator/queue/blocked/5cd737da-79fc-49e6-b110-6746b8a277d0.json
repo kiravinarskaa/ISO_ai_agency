@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "5cd737da-79fc-49e6-b110-6746b8a277d0",
+  "dedupeKey": "102bcc4c8d86caad58284421ba0ed0f1b577888aae3dea95b7fca5d24f20e57f",
+  "inputFingerprint": "7bfb68238d1e0f0108156ad1555229430b912b5119ac7b083cbb3f3a97333f05",
+  "inputFiles": [
+    {
+      "path": "client-input/gmail-intake.json",
+      "size": 2085
+    }
+  ],
+  "employeeId": "client-manager",
+  "routine": "client-intake",
+  "projectId": "INTAKE-73db3d3a48ef693eb10c5c1e",
+  "trigger": "event",
+  "status": "blocked",
+  "createdAt": "2026-11-05T17:35:41.982Z",
+  "updatedAt": "2026-11-05T17:47:32.141Z",
+  "attempts": 2,
+  "maxAttempts": 2,
+  "requiredOutput": "working/client-brief.json",
+  "intakeStage": true,
+  "nextAttemptAt": null,
+  "communicationApproval": {
+    "required": false,
+    "status": "not_required"
+  },
+  "startedAt": "2026-11-05T17:47:32.137Z",
+  "finishedAt": "2026-11-05T17:47:32.141Z",
+  "failure": {
+    "code": "GUARD_SKIPPED_ALREADY_RAN",
+    "message": "explicit event trigger: calendar day and window checks skipped; routine state and lease checks still apply; guard: another claim for this task is active"
+  },
+  "recoveryHistory": [
+    {
+      "at": "2026-11-05T17:46:55.791Z",
+      "by": "Your Name",
+      "reason": "Preflight passed; retrying after the active lease expired",
+      "from": "blocked",
+      "to": "pending"
+    }
+  ]
+}

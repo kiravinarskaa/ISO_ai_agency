@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "dea9e854-07b3-48a5-965b-d3e57719092d",
+  "dedupeKey": "b4b7e2652db1fbf78b076cded6b6874f538f825e85b2691f20f8e2d9c08f000e",
+  "inputFingerprint": "b9bdc1bbd685201eed578e4e1150813f0bd77a4fb3dd41fa2f5dd7fd351cb022",
+  "inputFiles": [
+    {
+      "path": "client-input/gmail-intake.json",
+      "size": 1356
+    }
+  ],
+  "employeeId": "client-manager",
+  "routine": "client-intake",
+  "projectId": "INTAKE-a0a147f40ced3f1c44fea5b7",
+  "trigger": "event",
+  "status": "failed",
+  "createdAt": "2026-11-04T12:18:27.773Z",
+  "updatedAt": "2026-11-04T12:46:46.267Z",
+  "attempts": 2,
+  "maxAttempts": 2,
+  "requiredOutput": "working/client-brief.json",
+  "intakeStage": true,
+  "nextAttemptAt": null,
+  "communicationApproval": {
+    "required": false,
+    "status": "not_required"
+  },
+  "startedAt": "2026-11-04T12:46:21.177Z",
+  "finishedAt": "2026-11-04T12:46:46.266Z",
+  "failure": {
+    "code": "OUTPUT_INVALID",
+    "message": "required output is missing or unsafe"
+  },
+  "recoveryHistory": [
+    {
+      "at": "2026-11-04T12:45:25.709Z",
+      "by": "Kira",
+      "reason": "Reviewed guard failure after task identity fix",
+      "from": "blocked",
+      "to": "pending"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schema": "ai-employee-receipt/1",
+  "receipt_provenance": "local-deterministic-identity-migration-v1",
+  "slug": "technical-controls-analyst",
+  "version": "1.9.0",
+  "standard": "1.5",
+  "installed_on": "2026-10-28",
+  "files": {
+    "employee.json": "665beaec5708b764",
+    "AGENTS.md": "dc23e3f2eeb8f4a4",
+    "CONTRACT.md": "57fb8a627fcbe3a6",
+    "ROLE.md": "6eded82f5c4183e7",
+    "SCHEDULE.md": "f799577cea716b36",
+    "work-profile.json": "2b257076b1671915",
+    "routines/review-technical-controls/SKILL.md": "ca1cec4925d3a266"
+  },
+  "pending": [],
+  "migration": {
+    "method": "local-deterministic-identity-migration-v1",
+    "migration_id": "local-iso-identity-v1-e756258ef6138db0913b61ae",
+    "migrated_at": "2026-11-04T18:56:29.544Z",
+    "previous_identity": {
+      "slug": "web-dev-employee",
+      "name": "Web Dev Employee",
+      "role": "Engineering and maintenance"
+    },
+    "current_identity": {
+      "slug": "technical-controls-analyst",
+      "name": "Technical Controls Analyst",
+      "role": "Analyze documented technical security controls and evidence gaps.",
+      "routines": [
+        "review-technical-controls"
+      ]
+    },
+    "original_receipt": {
+      "path": "agency/demo/receipt-migrations/technical-controls-analyst/local-iso-identity-v1-3326484b4ea66d58861f725c/original.installed.json",
+      "sha256": "565920410dbe3bfe5b82c971972e3895497fdb7b41ea9da1bce66525b8516ab4"
+    },
+    "baseline_identity": {
+      "path": "technical-controls-analyst/.upgrade/baseline/employee.json",
+      "sha256": "8f0ea158b0b9bab8033f890d5e3571c4d944e86e46f11a944c618ba3720ca795"
+    },
+    "verification": {
+      "result": "verified",
+      "verified_at": "2026-11-04T18:56:29.544Z",
+      "algorithm": "SHA-256",
+      "sha256": {
+        "employee.json": "665beaec5708b764e7fa36a48a3b039b7d3d0d549623ec610fb3e6396bc6f737",
+        "AGENTS.md": "dc23e3f2eeb8f4a4a2c025b1dfc435f99fa5f8ec001d554b4088b77e7b409d8e",
+        "CONTRACT.md": "57fb8a627fcbe3a65df8cbbfb35a08d171666bcf7219a1f8ca3e9857b81864f6",
+        "ROLE.md": "6eded82f5c4183e721feedadb2ca3a9d953aabaeb7eed77ecc7d7e0271202ab7",
+        "SCHEDULE.md": "f799577cea716b36cc42df7c488d6d14768241858e031a480ab75fd64d8e014e",
+        "work-profile.json": "2b257076b1671915cbe761a5574aa64bb8a1db3cc83725edee6a6af74d1d0dbb",
+        "routines/review-technical-controls/SKILL.md": "ca1cec4925d3a266c78d99749a4a55b2365e58583c137a6a4c81ece8498f01be"
+      }
+    },
+    "audit_record": "agency/demo/receipt-migrations/technical-controls-analyst/local-iso-identity-v1-e756258ef6138db0913b61ae/migration.json",
+    "supersedes": {
+      "migration_id": "local-iso-identity-v1-3326484b4ea66d58861f725c",
+      "receipt": {
+        "path": "agency/demo/receipt-migrations/technical-controls-analyst/local-iso-identity-v1-e756258ef6138db0913b61ae/superseded.installed.json",
+        "sha256": "d63870be339f2f8d28cc323fa63f748410a443d53744273ad0eddc9afa425e31"
+      },
+      "audit_record": {
+        "path": "agency/demo/receipt-migrations/technical-controls-analyst/local-iso-identity-v1-3326484b4ea66d58861f725c/migration.json",
+        "sha256": "f6d025b453a2265606fb1453083dac26cdef18ea899293c4b9dcdb2ca215271e"
+      }
+    },
+    "audit_record_sha256": "9e40329f80b11fcd2349152aafe2ddb657b720637875d85451999f33ade2740f"
+  }
+}

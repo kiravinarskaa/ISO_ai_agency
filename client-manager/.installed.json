@@ -1,0 +1,75 @@
+{
+  "schema": "ai-employee-receipt/1",
+  "receipt_provenance": "local-deterministic-identity-migration-v1",
+  "slug": "iso27001-client-manager",
+  "version": "2.0.0",
+  "standard": "1.5",
+  "installed_on": "2026-10-29",
+  "files": {
+    "employee.json": "2e9317fbcaf94e14",
+    "AGENTS.md": "6ceb3d2908639813",
+    "CONTRACT.md": "73456adb062964a9",
+    "ROLE.md": "d6afee8b4c9b5e43",
+    "SCHEDULE.md": "bf374109b424330c",
+    "work-profile.json": "f868d63880b4c42b",
+    "routines/client-intake/SKILL.md": "fc3f5824f7f6ff96",
+    "routines/client-input-review/SKILL.md": "fa1c7ec3457298ad",
+    "routines/client-clarification-draft/SKILL.md": "a36dd48c68b64685",
+    "routines/project-handoff/SKILL.md": "12f75c333c009629",
+    "routines/client-progress-update/SKILL.md": "d070ed2c457fbb07",
+    "routines/final-readiness-delivery/SKILL.md": "2e1f07c2a89a0ddd"
+  },
+  "pending": [],
+  "migration": {
+    "method": "local-deterministic-identity-migration-v1",
+    "migration_id": "local-iso-identity-v1-da48370a106b5be58c30d71a",
+    "migrated_at": "2026-11-04T18:52:01.226Z",
+    "previous_identity": {
+      "slug": "sales-employee",
+      "name": "Sales Employee",
+      "role": "Pipeline and outreach"
+    },
+    "current_identity": {
+      "slug": "iso27001-client-manager",
+      "name": "Client Manager",
+      "role": "Client coordination for ISO/IEC 27001 certification-readiness projects",
+      "routines": [
+        "client-intake",
+        "client-input-review",
+        "client-clarification-draft",
+        "project-handoff",
+        "client-progress-update",
+        "final-readiness-delivery"
+      ]
+    },
+    "original_receipt": {
+      "path": "agency/demo/receipt-migrations/client-manager/local-iso-identity-v1-da48370a106b5be58c30d71a/original.installed.json",
+      "sha256": "ba3f40e83d337dacc4daaed9acbd041ee8ca2c212f4fd8c66e605cc6716b39f5"
+    },
+    "baseline_identity": {
+      "path": "client-manager/.upgrade/baseline/employee.json",
+      "sha256": "1c4221a6adb16113719beeca365f50dfe5395a673e46699abf97a80079869b47"
+    },
+    "verification": {
+      "result": "verified",
+      "verified_at": "2026-11-04T18:52:01.226Z",
+      "algorithm": "SHA-256",
+      "sha256": {
+        "employee.json": "2e9317fbcaf94e14aacf8cf5a818ec3c1619dedfcc6aaed1ba3c5c93365bc909",
+        "AGENTS.md": "6ceb3d29086398137bfdf63656a5aaf4e4ef8284d46a11eb888efd6a0fea6edf",
+        "CONTRACT.md": "73456adb062964a95f499b8d533d085094ff8962991e13f9d2cb506f141b55b0",
+        "ROLE.md": "d6afee8b4c9b5e437b0bf036c7af93a9ee0a76cf1beb95fbc259b681e213645f",
+        "SCHEDULE.md": "bf374109b424330c4befb0b867aebb71c61d909b922ea769d171b2c0657f2252",
+        "work-profile.json": "f868d63880b4c42b5a42090e673e36ef483f282d752953d95e22bbf2a3c2078a",
+        "routines/client-intake/SKILL.md": "fc3f5824f7f6ff96cfe32b89a6b5e7748a33f2f2c0c6c2ca8546f9c8a379c62c",
+        "routines/client-input-review/SKILL.md": "fa1c7ec3457298ad1890704bb7e2544c70652e7dd4c3362c791b011cc3fc73ba",
+        "routines/client-clarification-draft/SKILL.md": "a36dd48c68b646855409e0e848dbc55ba320c291f31589029a7b1da1d5a6963a",
+        "routines/project-handoff/SKILL.md": "12f75c333c009629e1dd7d7e92539cf0ffb59f9dc48a5bf0f50ec4d69172cac3",
+        "routines/client-progress-update/SKILL.md": "d070ed2c457fbb07a711e4a18138bc4b515b8c96a291acde013dd527515273ba",
+        "routines/final-readiness-delivery/SKILL.md": "2e1f07c2a89a0ddd8ca75cc5ec84504bdd5937ebbb4a6a220ef573a22db08800"
+      }
+    },
+    "audit_record": "agency/demo/receipt-migrations/client-manager/local-iso-identity-v1-da48370a106b5be58c30d71a/migration.json",
+    "audit_record_sha256": "96363b1721c3a8f80f30e79a1e7795f69da2f45c32f619038f537883ba67f259"
+  }
+}

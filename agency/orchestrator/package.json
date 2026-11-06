@@ -1,0 +1,8 @@
+{
+  "name": "agency-local-orchestrator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/orchestrator.test.mjs"
+  }
+}

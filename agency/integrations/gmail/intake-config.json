@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "pollIntervalSeconds": 60,
+  "agencyMailboxAliases": [],
+  "maxBodyBytes": 262144
+}

@@ -1,0 +1,54 @@
+{
+  "schema": "agency-employee-receipt-migration/1",
+  "employee_id": "readiness-metrics-analyst",
+  "method": "local-deterministic-identity-migration-v1",
+  "migration_id": "local-iso-identity-v1-3d330f6534217c55af1239f9",
+  "migrated_at": "2026-11-04T19:39:49.945Z",
+  "previous_identity": {
+    "slug": "ad-manager-employee",
+    "name": "Ad Manager Employee",
+    "role": "Paid acquisition"
+  },
+  "current_identity": {
+    "slug": "readiness-metrics-analyst",
+    "name": "Readiness Metrics Analyst",
+    "role": "Summarize measured readiness from actual available artifacts.",
+    "routines": [
+      "summarize-readiness-metrics"
+    ]
+  },
+  "original_receipt": {
+    "path": "agency/demo/receipt-migrations/readiness-metrics-analyst/local-iso-identity-v1-1a82c42cd0d92da9a76c8d7b/original.installed.json",
+    "sha256": "679681bc3bd1cd8898f1e827f949deb24dafe30a0cf900c346a476d6b27bdb18"
+  },
+  "baseline_identity": {
+    "path": "readiness-metrics-analyst/.upgrade/baseline/employee.json",
+    "sha256": "e40cf90aa7a0e291f3e1b6f20a52f1ead2fa1a95116de0df50c2b1405f78e90d"
+  },
+  "verification": {
+    "result": "verified",
+    "verified_at": "2026-11-04T19:39:49.945Z",
+    "algorithm": "SHA-256",
+    "sha256": {
+      "employee.json": "a4a86c0952c5a10b87e2edb02331934847e7fa41c45b4fc7b7a5d55cf3f9d7b1",
+      "AGENTS.md": "cccc9539d6da9c186f61ca262373603185ea5f284d816610c5130f104d7832b0",
+      "CONTRACT.md": "052bd540a3d4aa5e7a18e29f4522fc8c4b9a99a39ac8fc7358304ee98adecf7c",
+      "ROLE.md": "8100a8b605c7e16ebf9a85f40eb14463835f645634c5db695de3b6bd44ffa9ec",
+      "SCHEDULE.md": "30b0c4c47df4496371515a6afc401fcb5165234e4fd0f77369e1746679e0e229",
+      "work-profile.json": "5f8bb2c9601bd677f99f29e3242adf6008d12eb1beb2b0dd716c102820a94eef",
+      "routines/summarize-readiness-metrics/SKILL.md": "936c20aea3e287b3b975ffa1b27266b2e1ff8614d63f42992b60421f9b24c9ec"
+    }
+  },
+  "audit_record": "agency/demo/receipt-migrations/readiness-metrics-analyst/local-iso-identity-v1-3d330f6534217c55af1239f9/migration.json",
+  "supersedes": {
+    "migration_id": "local-iso-identity-v1-555461d63cca9e571c170f7f",
+    "receipt": {
+      "path": "agency/demo/receipt-migrations/readiness-metrics-analyst/local-iso-identity-v1-3d330f6534217c55af1239f9/superseded.installed.json",
+      "sha256": "d301cb2c92594b5c4ad26f9442bc204d1cd0dc935a18954c134ae7c09d0c9e2a"
+    },
+    "audit_record": {
+      "path": "agency/demo/receipt-migrations/readiness-metrics-analyst/local-iso-identity-v1-555461d63cca9e571c170f7f/migration.json",
+      "sha256": "425bed6268b6dbb3b983cca233be1184f0938668a3edba8ce4cfd07b29f6d7e7"
+    }
+  }
+}

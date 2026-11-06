@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "ff404972-56ca-4ec8-98ca-984729f7cf54",
+  "dedupeKey": "b4b7e2652db1fbf78b076cded6b6874f538f825e85b2691f20f8e2d9c08f000e",
+  "inputFingerprint": "b9bdc1bbd685201eed578e4e1150813f0bd77a4fb3dd41fa2f5dd7fd351cb022",
+  "inputFiles": [
+    {
+      "path": "client-input/gmail-intake.json",
+      "size": 1356
+    }
+  ],
+  "employeeId": "client-manager",
+  "routine": "client-intake",
+  "projectId": "INTAKE-a0a147f40ced3f1c44fea5b7",
+  "trigger": "event",
+  "status": "failed",
+  "createdAt": "2026-11-04T16:07:40.191Z",
+  "updatedAt": "2026-11-04T18:00:12.877Z",
+  "attempts": 2,
+  "maxAttempts": 2,
+  "requiredOutput": "working/client-brief.json",
+  "intakeStage": true,
+  "nextAttemptAt": "2026-11-04T16:10:00.123Z",
+  "communicationApproval": {
+    "required": false,
+    "status": "not_required"
+  },
+  "retryOf": "dea9e854-07b3-48a5-965b-d3e57719092d",
+  "recoveryGeneration": 1,
+  "recoveryReason": "Corrected and reviewed the Client Manager handoff",
+  "recoveryOperator": {
+    "name": "Kira",
+    "at": "2026-11-04T16:07:40.191Z"
+  },
+  "startedAt": "2026-11-04T17:59:44.469Z",
+  "lastFailure": {
+    "code": "OUTPUT_MISSING",
+    "message": "required output is missing"
+  },
+  "finishedAt": "2026-11-04T18:00:12.877Z",
+  "failure": {
+    "code": "OUTPUT_SCHEMA_INVALID",
+    "message": "systems must be an array; locations must be an array"
+  }
+}

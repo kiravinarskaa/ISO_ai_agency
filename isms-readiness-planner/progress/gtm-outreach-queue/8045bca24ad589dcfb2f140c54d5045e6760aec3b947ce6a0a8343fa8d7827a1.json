@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "routine": "gtm-outreach-queue",
+  "period": "2026-10-28",
+  "observed_at": "2026-10-28T20:56:51+05:00",
+  "work_id": "supervised-synthetic-outreach-draft-test",
+  "expected": true,
+  "delivery": "completed",
+  "business": "unmeasured",
+  "summary": "Moved the member confirmed proof lines into Member claims and regenerated the never-send synthetic demonstration queue.",
+  "artifacts": [
+    "queue/2026-10-28-email.md",
+    "strategy/proof-inventory.md"
+  ],
+  "blockers": [],
+  "next_action": "Resume unfinished installation phases; preserve manual-only scheduling.",
+  "next_check": "At the next installation work session.",
+  "verified_artifacts": [
+    {
+      "path": "queue/2026-10-28-email.md",
+      "sha256": "a7a456c5248a49bc576829e44b97d726a8876b27764243df98438f29ee36e15e"
+    },
+    {
+      "path": "strategy/proof-inventory.md",
+      "sha256": "5f4fbcec61d9610a07556e870fcebd380787d15bc81b0ef42b73d1d2411e618e"
+    }
+  ]
+}

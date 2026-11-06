@@ -1,0 +1,144 @@
+﻿{
+    "schema":  "ai-employee/1",
+    "slug":  "readiness-metrics-analyst",
+    "name":  "Readiness Metrics Analyst",
+    "role":  "Summarize measured readiness from actual available artifacts.",
+    "version":  "1.9.0",
+    "standard":  "1.5",
+    "repository":  "https://github.com/markfulton/ai-employees",
+    "license":  "MIT",
+    "requires":  {
+                     "node":  "\u003e=18",
+                     "harness":  [
+                                     "claude-code",
+                                     "openclaw",
+                                     "hermes",
+                                     "opencode",
+                                     "grok-bot",
+                                     "codex",
+                                     "antigravity",
+                                     "pi",
+                                     "cline",
+                                     "qwen-code",
+                                     "deepseek"
+                                 ]
+                 },
+    "connections":  [
+                        {
+                            "capability":  "ads.account.read",
+                            "providers":  [
+                                              "meta-ads-mcp",
+                                              "meta-ads-cli",
+                                              "google-ads-mcp",
+                                              "supermetrics",
+                                              "windsor-ai"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "ads.signal.check",
+                            "providers":  [
+                                              "meta-ads-mcp",
+                                              "google-analytics-mcp",
+                                              "vercel"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "ads.creative.export",
+                            "providers":  [
+                                              "canva"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "ads.account.write",
+                            "providers":  [
+                                              "meta-ads-mcp"
+                                          ],
+                            "required":  false,
+                            "readonly":  false,
+                            "held":  "RELEASES.md names the ad account with prepare or publish; ads-build-desk Step 6a only"
+                        }
+                    ],
+    "routines":  [
+                     {
+                         "id":  "summarize-readiness-metrics",
+                         "days":  "mon-fri",
+                         "fire":  "00:01",
+                         "window_start":  "00:00",
+                         "window_end":  "23:59",
+                         "period_key":  "YYYY-MM-DD",
+                         "budget":  "30 min",
+                         "browser":  "never"
+                     }
+                 ],
+    "files":  {
+                  "kit":  [
+                              "AGENTS.md",
+                              "CAPABILITIES.md",
+                              "CHANGELOG.md",
+                              "CONTRACT.md",
+                              "INSTALL-PROMPT.md",
+                              "README.md",
+                              "ROLE.md",
+                              "VERSION",
+                              ".gitignore",
+                              "employee.json",
+                              "recipes/BROWSER-RECIPES.md",
+                              "recipes/META-ADS-RECIPES.md",
+                              "run/**",
+                              "scripts/**",
+                              "examples/**",
+                              "WORK-CYCLE.md",
+                              "work-profile.json",
+                              "routines/summarize-readiness-metrics/SKILL.md"
+                          ],
+                  "merge":  [
+                                "SCHEDULE.md"
+                            ],
+                  "member":  [
+                                 "RELEASES.md",
+                                 "state/**",
+                                 "board/**",
+                                 "crm/**",
+                                 "queue/**",
+                                 "strategy/**",
+                                 "briefs/**",
+                                 "scoreboard/**",
+                                 "dashboard/**",
+                                 "improvements/**",
+                                 "archive/**",
+                                 "paid/**",
+                                 "fleet/**",
+                                 "drafts/**",
+                                 "calendar/**",
+                                 "run/*.log",
+                                 "recipes/*.json",
+                                 "runlog.jsonl",
+                                 "*-latest.md",
+                                 ".installed.json",
+                                 "plan/**",
+                                 "metrics/**",
+                                 "creative/**",
+                                 "changes/**",
+                                 "build/**",
+                                 "operating-summary.md",
+                                 "PAUSED",
+                                 "schedule-commands.txt",
+                                 "progress/**",
+                                 "experiments/**",
+                                 "handoffs/**",
+                                 ".upgrade/**"
+                             ]
+              },
+    "notes":  {
+                  "merge":  "SCHEDULE.md carries the shape the kit ships and the days, windows and budgets the member owns. An upgrade reports a changed shape and never rewrites the row values.",
+                  "member":  "Everything under member is the business the employee has been running: its evidence, its ledgers, its learned browser flows and its own field repairs. An upgrade that overwrites any of it has destroyed work that exists nowhere else.",
+                  "recipes":  "recipes/BROWSER-RECIPES.md ships with the kit. Every recipes/*.json is learned on the member\u0027s own screens by the routine that owns it, so it is member data.",
+                  "phase1":  "One ISO readiness demonstration routine active; former routine files retained but inactive."
+              }
+}

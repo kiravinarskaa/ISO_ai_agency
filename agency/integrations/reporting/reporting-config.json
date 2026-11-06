@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "projectId": "ISO27001-001",
+  "spreadsheetId": "1c-03XPtquzFcLuFIsgk5tNQli1H0A4zK4qC-pAxhTcA",
+  "sheetName": "Ledger",
+  "confirmationTo": "csagencyai@gmail.com",
+  "employeeIds": [
+    "client-manager",
+    "isms-readiness-planner",
+    "requirements-evidence-specialist",
+    "technical-controls-analyst",
+    "security-awareness-specialist",
+    "corrective-action-specialist",
+    "readiness-metrics-analyst",
+    "project-manager"
+  ]
+}

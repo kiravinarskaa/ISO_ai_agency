@@ -1,0 +1,43 @@
+{
+  "schema": "agency-employee-receipt-migration/1",
+  "employee_id": "technical-controls-analyst",
+  "method": "local-deterministic-identity-migration-v1",
+  "migration_id": "local-iso-identity-v1-3326484b4ea66d58861f725c",
+  "migrated_at": "2026-11-04T18:52:01.226Z",
+  "previous_identity": {
+    "slug": "web-dev-employee",
+    "name": "Web Dev Employee",
+    "role": "Engineering and maintenance"
+  },
+  "current_identity": {
+    "slug": "technical-controls-analyst",
+    "name": "Technical Controls Analyst",
+    "role": "Analyze documented technical security controls and evidence gaps.",
+    "routines": [
+      "review-technical-controls"
+    ]
+  },
+  "original_receipt": {
+    "path": "agency/demo/receipt-migrations/technical-controls-analyst/local-iso-identity-v1-3326484b4ea66d58861f725c/original.installed.json",
+    "sha256": "565920410dbe3bfe5b82c971972e3895497fdb7b41ea9da1bce66525b8516ab4"
+  },
+  "baseline_identity": {
+    "path": "technical-controls-analyst/.upgrade/baseline/employee.json",
+    "sha256": "8f0ea158b0b9bab8033f890d5e3571c4d944e86e46f11a944c618ba3720ca795"
+  },
+  "verification": {
+    "result": "verified",
+    "verified_at": "2026-11-04T18:52:01.226Z",
+    "algorithm": "SHA-256",
+    "sha256": {
+      "employee.json": "0ce46157d6c7519cbb6d97d40b694ebcc27cae4e94db46bbb0bafe83575135f9",
+      "AGENTS.md": "dc23e3f2eeb8f4a4a2c025b1dfc435f99fa5f8ec001d554b4088b77e7b409d8e",
+      "CONTRACT.md": "57fb8a627fcbe3a65df8cbbfb35a08d171666bcf7219a1f8ca3e9857b81864f6",
+      "ROLE.md": "6eded82f5c4183e721feedadb2ca3a9d953aabaeb7eed77ecc7d7e0271202ab7",
+      "SCHEDULE.md": "6bf5004fc249771e710852f7e2c5839e72f0cd2be17a68024884eea7663ff539",
+      "work-profile.json": "2b257076b1671915cbe761a5574aa64bb8a1db3cc83725edee6a6af74d1d0dbb",
+      "routines/review-technical-controls/SKILL.md": "ca1cec4925d3a266c78d99749a4a55b2365e58583c137a6a4c81ece8498f01be"
+    }
+  },
+  "audit_record": "agency/demo/receipt-migrations/technical-controls-analyst/local-iso-identity-v1-3326484b4ea66d58861f725c/migration.json"
+}

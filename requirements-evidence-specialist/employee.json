@@ -1,0 +1,186 @@
+﻿{
+    "schema":  "ai-employee/1",
+    "slug":  "requirements-evidence-specialist",
+    "name":  "Requirements and Evidence Specialist",
+    "role":  "Map documented requirements, available evidence and missing evidence.",
+    "version":  "1.10.0",
+    "standard":  "1.5",
+    "repository":  "https://github.com/markfulton/ai-employees",
+    "license":  "MIT",
+    "requires":  {
+                     "node":  "\u003e=18",
+                     "harness":  [
+                                     "claude-code",
+                                     "openclaw",
+                                     "hermes",
+                                     "opencode",
+                                     "grok-bot",
+                                     "codex",
+                                     "antigravity",
+                                     "pi",
+                                     "cline",
+                                     "qwen-code",
+                                     "deepseek"
+                                 ]
+                 },
+    "connections":  [
+                        {
+                            "capability":  "search.performance.read",
+                            "providers":  [
+                                              "openseo",
+                                              "search-console-api"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "analytics.read",
+                            "providers":  [
+                                              "google-analytics-mcp",
+                                              "ga4-data-api"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "serp.read",
+                            "providers":  [
+                                              "openseo",
+                                              "apify",
+                                              "ahrefs",
+                                              "semrush"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "keyword.research",
+                            "providers":  [
+                                              "openseo",
+                                              "ahrefs",
+                                              "semrush",
+                                              "dataforseo"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "index.request",
+                            "providers":  [
+                                              "indexnow",
+                                              "search-console-api"
+                                          ],
+                            "required":  false,
+                            "readonly":  false
+                        },
+                        {
+                            "capability":  "cms.publish",
+                            "providers":  [
+                                              "wordpress-com",
+                                              "wordpress-mcp-adapter",
+                                              "wordpress-rest",
+                                              "webflow",
+                                              "wix",
+                                              "shopify",
+                                              "ghost"
+                                          ],
+                            "required":  false,
+                            "readonly":  false
+                        },
+                        {
+                            "capability":  "answer.visibility.read",
+                            "providers":  [
+                                              "member-observation",
+                                              "browser",
+                                              "bing-webmaster-tools"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        },
+                        {
+                            "capability":  "search.generative-ai.read",
+                            "providers":  [
+                                              "browser",
+                                              "verified-native-report-connector"
+                                          ],
+                            "required":  false,
+                            "readonly":  true
+                        }
+                    ],
+    "routines":  [
+                     {
+                         "id":  "build-evidence-register",
+                         "days":  "mon-fri",
+                         "fire":  "00:01",
+                         "window_start":  "00:00",
+                         "window_end":  "23:59",
+                         "period_key":  "YYYY-MM-DD",
+                         "budget":  "30 min",
+                         "browser":  "never"
+                     }
+                 ],
+    "files":  {
+                  "kit":  [
+                              "AGENTS.md",
+                              "CAPABILITIES.md",
+                              "CHANGELOG.md",
+                              "CONTRACT.md",
+                              "INSTALL-PROMPT.md",
+                              "README.md",
+                              "ROLE.md",
+                              "VERSION",
+                              ".gitignore",
+                              "employee.json",
+                              "recipes/BROWSER-RECIPES.md",
+                              "run/**",
+                              "scripts/**",
+                              "examples/**",
+                              "AEO-PLAYBOOK.md",
+                              "standards/PUBLISH-STANDARD.md",
+                              "WORK-CYCLE.md",
+                              "work-profile.json",
+                              "GSC-GENERATIVE-AI.md",
+                              "routines/build-evidence-register/SKILL.md"
+                          ],
+                  "merge":  [
+                                "SCHEDULE.md"
+                            ],
+                  "member":  [
+                                 "RELEASES.md",
+                                 "state/**",
+                                 "board/**",
+                                 "crm/**",
+                                 "queue/**",
+                                 "strategy/**",
+                                 "briefs/**",
+                                 "scoreboard/**",
+                                 "dashboard/**",
+                                 "improvements/**",
+                                 "archive/**",
+                                 "paid/**",
+                                 "fleet/**",
+                                 "drafts/**",
+                                 "calendar/**",
+                                 "run/*.log",
+                                 "recipes/*.json",
+                                 "runlog.jsonl",
+                                 "*-latest.md",
+                                 ".installed.json",
+                                 "tracking/**",
+                                 "content/**",
+                                 "index/**",
+                                 "PAUSED",
+                                 "schedule-commands.txt",
+                                 "progress/**",
+                                 "experiments/**",
+                                 "handoffs/**",
+                                 ".upgrade/**"
+                             ]
+              },
+    "notes":  {
+                  "merge":  "SCHEDULE.md carries the shape the kit ships and the days, windows and budgets the member owns. An upgrade reports a changed shape and never rewrites the row values.",
+                  "member":  "Everything under member is the business the employee has been running: its evidence, its ledgers, its learned browser flows and its own field repairs. An upgrade that overwrites any of it has destroyed work that exists nowhere else.",
+                  "recipes":  "recipes/BROWSER-RECIPES.md ships with the kit. Every recipes/*.json is learned on the member\u0027s own screens by the routine that owns it, so it is member data.",
+                  "phase1":  "One ISO readiness demonstration routine active; former routine files retained but inactive."
+              }
+}

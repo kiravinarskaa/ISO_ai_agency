@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "routine": "sales-desk-setup",
+  "period": "2026-10",
+  "observed_at": "2026-10-29T18:52:45+05:00",
+  "work_id": "sales-desk-setup:2026-10:initial",
+  "expected": true,
+  "delivery": "blocked",
+  "business": "unknown",
+  "summary": "Verified runtime and guards, initialized ledgers and review notes, and seeded the setup task inbox. Business research and strategy remain blocked until the member supplies the business homepage.",
+  "artifacts": [
+    "pipeline/inbox.jsonl",
+    "crm/contacts.csv",
+    "strategy/proof-inventory.md",
+    "review/manual.md"
+  ],
+  "blockers": [
+    {
+      "key": "sales-setup:homepage-url",
+      "step": "business-research",
+      "kind": "input",
+      "owner": "member",
+      "evidence": "No business homepage URL is present in the kit or readable adjacent workspace files.",
+      "verified_at": "2026-10-29T18:52:45+05:00",
+      "next_action": "Provide the public business homepage URL already requested in the conversation.",
+      "next_check": "When the member replies"
+    }
+  ],
+  "next_action": "Resume the setup crawl after the public business homepage URL arrives.",
+  "next_check": "When the member replies",
+  "verified_artifacts": [
+    {
+      "path": "pipeline/inbox.jsonl",
+      "sha256": "4f69aeae2ea1df9a356ebd67adeed6acf771f7e22cad02b1ce8c00ee2a9e3cce"
+    },
+    {
+      "path": "crm/contacts.csv",
+      "sha256": "d9823fa21ee8deca31ad7c62d8fea7c98e3f55f1bc70484cba6641ea7744ada1"
+    },
+    {
+      "path": "strategy/proof-inventory.md",
+      "sha256": "4e75e5f890dea65a4627509b3fe25fb436e6c28f504c24358967337a7bf7358a"
+    },
+    {
+      "path": "review/manual.md",
+      "sha256": "87f7bcf1d37b4c511c7249338da6cdc903e0e63088122af6e84631ff0614d0d3"
+    }
+  ]
+}

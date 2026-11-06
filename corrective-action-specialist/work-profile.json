@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "objective": "Consolidate specialist gaps into a prioritized corrective-action register.",
+  "standup": "build-corrective-action-register",
+  "reviewer": "build-corrective-action-register",
+  "routines": {
+    "build-corrective-action-register": {
+      "kind": "produce",
+      "expected_when": "An explicit project_root is supplied and the routine is due.",
+      "acceptance": "Produces working/corrective-action-register.md from provided evidence and states blockers and limitations.",
+      "fallback": "Write a blocker artifact; never infer missing evidence.",
+      "recovery": "Re-read current project inputs and continue within this eligible run."
+    }
+  }
+}

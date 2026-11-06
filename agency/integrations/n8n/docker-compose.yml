@@ -1,0 +1,23 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: agentops-n8n
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - AGENCY_WORKER_TOKEN=${AGENCY_WORKER_TOKEN}
+      - AGENCY_WORKER_URL=http://host.docker.internal:8787
+      - N8N_EVENT_TOKEN=${N8N_EVENT_TOKEN}
+      - AGENCY_REPORT_RECIPIENT=${AGENCY_REPORT_RECIPIENT}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  n8n_data:

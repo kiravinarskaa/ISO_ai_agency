@@ -1,0 +1,19 @@
+{
+  "name": "agentops-gmail-readonly-connector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "authorize": "node gmail.mjs authorize",
+    "verify": "node gmail.mjs verify",
+    "list": "node gmail.mjs list",
+    "poll-once": "node intake-poller.mjs once",
+    "poll": "node intake-poller.mjs poll",
+    "check-config": "node gmail.mjs check-config",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "google-auth-library": "^10.5.0",
+    "googleapis": "^171.0.0"
+  }
+}

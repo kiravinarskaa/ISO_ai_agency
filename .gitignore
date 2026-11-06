@@ -1,0 +1,68 @@
+# Authentication and credentials
+.env
+.env.*
+!.env.example
+**/private/
+**/credentials.json
+**/tokens.json
+**/token.json
+**/*secret*.json
+*.pem
+*.key
+
+# Real customer data and email ingestion
+/agency/projects/
+/agency/integrations/gmail/staging/
+/agency/integrations/gmail/state/
+/agency/integrations/gmail/logs/
+/agency/integrations/gmail/.npm-cache/
+/agency/config/demo-automation-policy.json
+
+# Runtime and employee state
+**/state/
+**/runlog.jsonl
+**/logs/
+**/node_modules/
+**/.npm-cache/
+
+# Temporary output
+*.tmp
+
+# Google reporting integration
+/agency/integrations/reporting/private/
+/agency/integrations/reporting/state/
+/agency/integrations/reporting/receipts/
+/agency/integrations/reporting/logs/
+/agency/integrations/reporting/demo-reporting-policy.json
+
+# Local database and backups
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+*.backup
+
+# Additional credential formats
+*.p12
+*.pfx
+*.pem
+*.key
+*service-account*.json
+
+# Codex and local runtime files
+**/.codex/
+**/.env.local
+**/run-state.json
+**/run-leases/
+
+
+# Local authorization policies
+/agency/integrations/reporting/automatic-workflow-policy.json
+/agency/integrations/reporting/customer-contact-policy.json
+
+# Generated reports and scratch work
+/agency/reports/
+/final-agency-report-readcopy.docx
+/sandbox-test/
+/work/
+/client-manager-backup/

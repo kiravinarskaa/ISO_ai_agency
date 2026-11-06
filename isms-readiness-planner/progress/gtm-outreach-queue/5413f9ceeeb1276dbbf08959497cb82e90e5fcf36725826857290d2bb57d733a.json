@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "routine": "gtm-outreach-queue",
+  "period": "2026-10-28",
+  "observed_at": "2026-10-28T20:53:32+05:00",
+  "work_id": "supervised-synthetic-outreach-draft-test",
+  "expected": true,
+  "delivery": "completed",
+  "business": "unmeasured",
+  "summary": "Created and checked a clearly labeled synthetic email queue for a supervised drafting test.",
+  "artifacts": [
+    "queue/2026-10-28-email.md"
+  ],
+  "blockers": [],
+  "next_action": "Member reviews the synthetic drafts and staged proof candidates.",
+  "next_check": "At the current Phase 6 review checkpoint.",
+  "verified_artifacts": [
+    {
+      "path": "queue/2026-10-28-email.md",
+      "sha256": "eb1baf441b17557c2fde650c3daa2f84e3f257326e49b0ad55e89d3c934e2247"
+    }
+  ]
+}

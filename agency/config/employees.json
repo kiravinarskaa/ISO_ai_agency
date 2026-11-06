@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "employees": [
+    { "id": "client-manager", "root": "client-manager", "enabled": true, "routines": ["client-intake"] },
+    { "id": "project-manager", "root": "project-manager", "enabled": false, "routines": [] },
+    { "id": "isms-readiness-planner", "root": "isms-readiness-planner", "enabled": false, "routines": [] },
+    { "id": "requirements-evidence-specialist", "root": "requirements-evidence-specialist", "enabled": false, "routines": [] },
+    { "id": "technical-controls-analyst", "root": "technical-controls-analyst", "enabled": false, "routines": [] },
+    { "id": "security-awareness-specialist", "root": "security-awareness-specialist", "enabled": false, "routines": [] },
+    { "id": "readiness-metrics-analyst", "root": "readiness-metrics-analyst", "enabled": false, "routines": [] },
+    { "id": "corrective-action-specialist", "root": "corrective-action-specialist", "enabled": false, "routines": [] }
+  ]
+}

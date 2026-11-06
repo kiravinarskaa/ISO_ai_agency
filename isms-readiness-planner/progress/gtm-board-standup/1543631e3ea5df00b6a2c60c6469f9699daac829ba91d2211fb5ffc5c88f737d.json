@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "routine": "gtm-board-standup",
+  "period": "2026-10-29",
+  "observed_at": "2026-10-29T09:16:26+05:00",
+  "work_id": "phishguard-current-gtm-brief",
+  "expected": true,
+  "delivery": "completed",
+  "business": "unmeasured",
+  "summary": "Prepared a sourced PhishGuard launch brief that distinguishes prototype readiness from unresolved page, data handling, buyer signal and scheduling evidence.",
+  "artifacts": [
+    "brief-latest.md"
+  ],
+  "blockers": [
+    {
+      "key": "public-page-verification",
+      "step": "Verify public prototype page",
+      "kind": "access",
+      "owner": "member",
+      "evidence": "Available web read returned no page content; PHISHGUARD-CONTEXT.md names the Render prototype URL and possible cold-start delay.",
+      "verified_at": "2026-10-29T09:16:26+05:00",
+      "next_action": "Verify page content and availability after startup.",
+      "next_check": "Next review after a public read route returns content."
+    },
+    {
+      "key": "data-handling-evidence",
+      "step": "Document data handling",
+      "kind": "evidence",
+      "owner": "member",
+      "evidence": "strategy/positioning.md marks privacy details unknown; board card C-004 is open.",
+      "verified_at": "2026-10-29T09:16:26+05:00",
+      "next_action": "Verify input handling, retention, access, deletion and limits before research invitations.",
+      "next_check": "Before any real email is submitted."
+    },
+    {
+      "key": "scheduled-delivery-proof",
+      "step": "Verify unattended delivery",
+      "kind": "dependency",
+      "owner": "member",
+      "evidence": "state/gtm-intake-and-dashboard.json records schedule_registered=false; board card C-005 remains blocked.",
+      "verified_at": "2026-10-29T09:16:26+05:00",
+      "next_action": "Register the schedule when ready and confirm a real scheduled run produces its brief, run record and receipt.",
+      "next_check": "After schedule registration."
+    }
+  ],
+  "next_action": "Prepare the synthetic evaluation protocol on board card C-003, then complete the data handling review on C-004.",
+  "next_check": "Next eligible GTM review or when public page verification becomes available.",
+  "verified_artifacts": [
+    {
+      "path": "brief-latest.md",
+      "sha256": "ba3b35cd3292468f90267b24aa505f7ddc24f24fba15e124c602cbbed91751df"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+@echo off
+cd /d "D:\AgentOps\client-manager"
+node "D:\AgentOps\client-manager\scripts\guard.mjs" final-readiness-delivery
+if errorlevel 1 exit /b %errorlevel%
+REM Read routines/final-readiness-delivery/SKILL.md and follow its project-scoped instructions.

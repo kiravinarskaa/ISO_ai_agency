@@ -1,0 +1,5 @@
+contact_id,first,name,company,account_url,email,linkedin_url,segment,campaign,tags,source,added_on
+demo-001,Alex,Demo Accounting LLC,https://example.invalid,demo-accounting@example.invalid,,small-business,phishguard-demo,synthetic-demo,university-prototype,2026-10-28
+demo-002,Jamie,Example Retail Group,https://example.invalid,demo-retail@example.invalid,,small-business,phishguard-demo,synthetic-demo,university-prototype,2026-10-28
+demo-003,Taylor,Sample Logistics Ltd,https://example.invalid,demo-logistics@example.invalid,,small-business,phishguard-demo,synthetic-demo,university-prototype,2026-10-28
+# --- agent rows below this marker, append only, never edit above it ---

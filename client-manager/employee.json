@@ -1,0 +1,138 @@
+{
+  "schema": "ai-employee/1",
+  "slug": "iso27001-client-manager",
+  "name": "Client Manager",
+  "role": "Client coordination for ISO/IEC 27001 certification-readiness projects",
+  "version": "2.0.0",
+  "standard": "1.5",
+  "license": "MIT",
+  "requires": {
+    "node": ">=18",
+    "harness": [
+      "claude-code",
+      "openclaw",
+      "hermes",
+      "opencode",
+      "grok-bot",
+      "codex",
+      "antigravity",
+      "pi",
+      "cline",
+      "qwen-code",
+      "deepseek"
+    ]
+  },
+  "connections": [
+    {
+      "capability": "files.read",
+      "providers": [
+        "local-filesystem"
+      ],
+      "required": true,
+      "readonly": true
+    },
+    {
+      "capability": "files.write",
+      "providers": [
+        "local-filesystem"
+      ],
+      "required": true,
+      "readonly": false
+    },
+    {
+      "capability": "shell.node",
+      "providers": [
+        "node"
+      ],
+      "required": true,
+      "readonly": false
+    }
+  ],
+  "routines": [
+    {
+      "id": "client-intake",
+      "days": "mon-fri",
+      "fire": "06:45",
+      "window_start": "06:30",
+      "window_end": "09:45",
+      "period_key": "YYYY-MM-DD",
+      "budget": "25 min",
+      "browser": "never"
+    },
+    {
+      "id": "client-input-review",
+      "days": "mon-fri",
+      "fire": "07:30",
+      "window_start": "07:15",
+      "window_end": "11:30",
+      "period_key": "YYYY-MM-DD",
+      "budget": "12 min",
+      "browser": "never"
+    },
+    {
+      "id": "client-clarification-draft",
+      "days": "mon-fri",
+      "fire": "08:15",
+      "window_start": "08:00",
+      "window_end": "12:00",
+      "period_key": "YYYY-MM-DD",
+      "budget": "30 min",
+      "browser": "never"
+    },
+    {
+      "id": "project-handoff",
+      "days": "mon-fri",
+      "fire": "11:00",
+      "window_start": "10:45",
+      "window_end": "15:00",
+      "period_key": "YYYY-MM-DD",
+      "budget": "45 min",
+      "browser": "never"
+    },
+    {
+      "id": "client-progress-update",
+      "days": "mon-fri",
+      "fire": "13:30",
+      "window_start": "13:15",
+      "window_end": "17:00",
+      "period_key": "YYYY-MM-DD",
+      "budget": "35 min",
+      "browser": "never"
+    },
+    {
+      "id": "final-readiness-delivery",
+      "days": "fri",
+      "fire": "16:00",
+      "window_start": "15:45",
+      "window_end": "19:00",
+      "period_key": "YYYY-Www",
+      "budget": "35 min",
+      "browser": "never"
+    }
+  ],
+  "files": {
+    "kit": [
+      "AGENTS.md",
+      "CAPABILITIES.md",
+      "CONTRACT.md",
+      "README.md",
+      "ROLE.md",
+      "SCHEDULE.md",
+      "employee.json",
+      "routines/**",
+      "scripts/**",
+      "WORK-CYCLE.md",
+      "work-profile.json"
+    ],
+    "member": [
+      "state/**",
+      "runlog.jsonl",
+      "progress/**",
+      "projects/**",
+      ".upgrade/**"
+    ]
+  },
+  "notes": {
+    "member": "Client evidence and project artifacts are preserved as member data. Routines write only their declared outputs."
+  }
+}

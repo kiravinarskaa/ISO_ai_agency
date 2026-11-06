@@ -1,0 +1,71 @@
+{
+  "schema": "ai-employee-receipt/1",
+  "receipt_provenance": "local-deterministic-identity-migration-v1",
+  "slug": "corrective-action-specialist",
+  "version": "1.9.0",
+  "standard": "1.5",
+  "installed_on": "2026-10-29",
+  "files": {
+    "employee.json": "a5ff3d52da342990",
+    "AGENTS.md": "5d6eeccef9058334",
+    "CONTRACT.md": "56bdf9c69a1a4cb8",
+    "ROLE.md": "a86cbb63e80de99a",
+    "SCHEDULE.md": "b602deac4907ec5f",
+    "work-profile.json": "0a8ce125889eeaaa",
+    "routines/build-corrective-action-register/SKILL.md": "71c54086f1f99b62"
+  },
+  "pending": [],
+  "migration": {
+    "method": "local-deterministic-identity-migration-v1",
+    "migration_id": "local-iso-identity-v1-573d0e9930294b8ddc7a02ed",
+    "migrated_at": "2026-11-04T18:56:29.544Z",
+    "previous_identity": {
+      "slug": "customer-satisfaction-employee",
+      "name": "Customer Satisfaction Employee",
+      "role": "Support and retention"
+    },
+    "current_identity": {
+      "slug": "corrective-action-specialist",
+      "name": "Corrective Action Specialist",
+      "role": "Consolidate specialist gaps into a prioritized corrective-action register.",
+      "routines": [
+        "build-corrective-action-register"
+      ]
+    },
+    "original_receipt": {
+      "path": "agency/demo/receipt-migrations/corrective-action-specialist/local-iso-identity-v1-ffe96684a7344cc5b156a6a5/original.installed.json",
+      "sha256": "be7aad878dc8ed4c6739f9b2233b34bffc941c096b4f5a258d7566b2c9f032a4"
+    },
+    "baseline_identity": {
+      "path": "corrective-action-specialist/.upgrade/baseline/employee.json",
+      "sha256": "41905869bdfd107807a820ed2c571918cbeed57913dd1bc89b3b8aaf0ea3fccf"
+    },
+    "verification": {
+      "result": "verified",
+      "verified_at": "2026-11-04T18:56:29.544Z",
+      "algorithm": "SHA-256",
+      "sha256": {
+        "employee.json": "a5ff3d52da3429905ee901c0509cc45fc79a9e17684bc174158bb9db54604d38",
+        "AGENTS.md": "5d6eeccef905833437d3607b31acd0f8bf58219c562ab737e195c335ea94302f",
+        "CONTRACT.md": "56bdf9c69a1a4cb856cffa4c18bad0da416968a3cf7b8e228a5893b8377a531b",
+        "ROLE.md": "a86cbb63e80de99acdd542e740031c778597857ff81903591eefa8da107cc117",
+        "SCHEDULE.md": "b602deac4907ec5f79f824cb58b760de9b031fe32fab47ed819985134251ca70",
+        "work-profile.json": "0a8ce125889eeaaa1ae7ab68f97a20d5413fb609bb580e242618983c3728a1d3",
+        "routines/build-corrective-action-register/SKILL.md": "71c54086f1f99b6206c320eaecb632a068a920eb443131b19a707bc29f95abba"
+      }
+    },
+    "audit_record": "agency/demo/receipt-migrations/corrective-action-specialist/local-iso-identity-v1-573d0e9930294b8ddc7a02ed/migration.json",
+    "supersedes": {
+      "migration_id": "local-iso-identity-v1-ffe96684a7344cc5b156a6a5",
+      "receipt": {
+        "path": "agency/demo/receipt-migrations/corrective-action-specialist/local-iso-identity-v1-573d0e9930294b8ddc7a02ed/superseded.installed.json",
+        "sha256": "db5faee2d5855a097fc8134dd6e9ea4709b5fa39f4c8f7e9627239c87791bc13"
+      },
+      "audit_record": {
+        "path": "agency/demo/receipt-migrations/corrective-action-specialist/local-iso-identity-v1-ffe96684a7344cc5b156a6a5/migration.json",
+        "sha256": "3c1a1fb1407bf0ff104c009b61a3fe00d59cbf572aa7b1e6b9e2efb3cc443cfe"
+      }
+    },
+    "audit_record_sha256": "a8d800f9fefa325e7e60afa23e97187472ed413a370d0e0ceced26b44d8783cb"
+  }
+}

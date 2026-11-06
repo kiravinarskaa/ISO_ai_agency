@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "7c2293b9-d8a2-4a17-baa8-4fe2646586c5",
+  "dedupeKey": "9c3fe31b02429e17bdc158b6a4dd5cabfc2804f4d573f072601a2f8f5329d8d6",
+  "inputFingerprint": "04e68ede150af7056e65bfeb951deeb0aca4731b4d1c4e6dc8f5c3ec1c94b372",
+  "inputFiles": [
+    {
+      "path": "client-input/company-profile.md",
+      "size": 1384
+    }
+  ],
+  "employeeId": "client-manager",
+  "routine": "client-intake",
+  "projectId": "ISO27001-001",
+  "trigger": "event",
+  "status": "completed",
+  "createdAt": "2026-11-04T08:34:21.117Z",
+  "updatedAt": "2026-11-04T08:34:54.733Z",
+  "attempts": 1,
+  "maxAttempts": 2,
+  "requiredOutput": "working/client-brief.json",
+  "nextAttemptAt": null,
+  "communicationApproval": {
+    "required": false,
+    "status": "not_required"
+  },
+  "startedAt": "2026-11-04T08:34:21.345Z",
+  "finishedAt": "2026-11-04T08:34:54.732Z",
+  "output": "working/client-brief.json",
+  "failure": null
+}
