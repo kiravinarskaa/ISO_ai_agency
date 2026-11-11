@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0c1422">
+    <title>Boss Command Center | ISO 27001 AI Agency</title>
+    <link rel="stylesheet" href="/app.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main id="login-view" class="login-wrap" hidden>
+      <section class="login-card">
+        <div class="brand-mark" aria-hidden="true">A</div>
+        <p class="eyebrow">ISO 27001 AI AGENCY</p>
+        <h1>Boss Command Center</h1>
+        <p class="muted">Sign in to assign work and review the live task ledger.</p>
+        <form id="login-form">
+          <label for="boss-password">Boss password</label>
+          <input id="boss-password" name="password" type="password" autocomplete="current-password" required>
+          <button class="button primary full" type="submit">Sign in</button>
+          <p id="login-error" class="form-message" role="status"></p>
+        </form>
+        <p class="fine-print">Access is limited to the person who holds the dashboard password.</p>
+      </section>
+    </main>
+
+    <div id="dashboard-view" class="app-shell" hidden>
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Boss Command Center home">
+          <span class="brand-mark">A</span>
+          <span><strong>ISO Agency</strong><small>Boss Command Center</small></span>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+          <a class="nav-link active" href="#overview">Overview</a>
+          <a class="nav-link" href="#tasks">Task board</a>
+          <a class="nav-link" href="#employees">Employees</a>
+          <a class="nav-link" href="#reports">Reports</a>
+          <a class="nav-link" href="#chat">Ask the PM</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <span class="connection-dot"></span>
+          <span id="connection-label">Connecting to the task ledger</span>
+          <button id="logout-button" class="text-button">Sign out</button>
+        </div>
+      </aside>
+
+      <section class="main-area">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">AGENCY OPERATIONS</p>
+            <h1>Good day, Boss</h1>
+            <p id="today-label" class="muted"></p>
+          </div>
+          <button class="button primary" id="jump-to-assign">＋ Assign a task</button>
+        </header>
+
+        <div id="page-error" class="notice error" role="alert" hidden></div>
+
+        <section id="overview" class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">LIVE SNAPSHOT</p><h2>Work at a glance</h2></div>
+            <span class="updated-label" id="updated-label">Waiting for ledger data</span>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card"><span>Queued</span><strong id="count-queued">—</strong><small>Waiting to start</small></article>
+            <article class="metric-card"><span>In progress</span><strong id="count-progress">—</strong><small>Being worked on</small></article>
+            <article class="metric-card"><span>Blocked</span><strong id="count-blocked">—</strong><small>Needs attention</small></article>
+            <article class="metric-card"><span>Completed today</span><strong id="count-completed">—</strong><small>Recorded in the ledger</small></article>
+          </div>
+        </section>
+
+        <section id="employees" class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">THE 7 + 1 TEAM</p><h2>Employee status</h2></div>
+            <span class="muted">Status comes from assigned tasks</span>
+          </div>
+          <div id="employee-cards" class="employee-grid"></div>
+        </section>
+
+        <section id="tasks" class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">TASK LEDGER</p><h2>All tasks</h2></div>
+            <button class="button secondary" id="export-csv">Download CSV</button>
+          </div>
+          <div class="filters">
+            <label>Employee<select id="filter-employee"><option value="">All employees</option></select></label>
+            <label>Status<select id="filter-status"><option value="">All statuses</option></select></label>
+            <label>Priority<select id="filter-priority"><option value="">All priorities</option></select></label>
+            <label>Date<select id="filter-date"><option value="all">All dates</option><option value="today">Today</option><option value="week">This week</option></select></label>
+          </div>
+          <div id="task-list" class="task-list"></div>
+        </section>
+
+        <section id="assign" class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">NEW WORK</p><h2>Assign a task</h2></div>
+          </div>
+          <form id="task-form" class="assign-form">
+            <label>Task title<input name="title" maxlength="160" required placeholder="For example: Review access control evidence"></label>
+            <label>Assign to<select name="employeeId" id="assign-employee" required></select></label>
+            <label class="wide-field">Description<textarea name="description" maxlength="4000" required placeholder="Describe the work and what a useful result should include."></textarea></label>
+            <label>Priority<select name="priority"><option>Normal</option><option>Low</option><option>High</option><option>Urgent</option></select></label>
+            <label>Deadline<input name="deadline" type="datetime-local"></label>
+            <div class="form-actions"><button class="button primary" type="submit">Add to task ledger</button><span id="task-form-message" class="form-message" role="status"></span></div>
+          </form>
+        </section>
+
+        <section id="reports" class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">PERFORMANCE</p><h2>Reports</h2></div>
+          </div>
+          <div class="report-grid">
+            <article class="panel">
+              <h3>Daily and weekly summary</h3>
+              <div id="report-summary"></div>
+            </article>
+            <article class="panel">
+              <h3>Completions by employee</h3>
+              <div id="report-employees"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="chat" class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">DATA-GROUNDED CHAT</p><h2>Ask the team</h2></div>
+          </div>
+          <div class="chat-panel">
+            <div class="chat-controls">
+              <label>Chat with<select id="chat-employee"><option value="">Project Manager</option></select></label>
+              <span class="muted">Answers use task records in the Sheet.</span>
+            </div>
+            <div id="chat-history" class="chat-history" aria-live="polite"></div>
+            <form id="chat-form" class="chat-form">
+              <label class="visually-hidden" for="chat-message">Your question</label>
+              <input id="chat-message" name="message" maxlength="2000" required placeholder="Ask about running or blocked tasks…">
+              <button class="button primary" type="submit">Ask</button>
+            </form>
+          </div>
+        </section>
+
+        <footer class="app-footer">
+          Task records and chat history are stored in the linked Google Sheet. Employee statuses reflect recorded work.
+        </footer>
+      </section>
+    </div>
+  </body>
+</html>
