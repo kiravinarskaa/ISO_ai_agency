@@ -320,7 +320,7 @@ test("missing input after enqueue blocks before executor invocation", async () =
 });
 
 // Test goal: read-only sandbox preflight blocks before claiming a task or consuming an attempt. Assertions below define the exact expected result.
-test("read-only sandbox preflight blocks before claiming a task or consuming an attempt", async () => {
+test("read-only sandbox preflight blocks the task without consuming an attempt", async () => {
   const f = fixture();
   try {
     const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
@@ -335,7 +335,7 @@ test("read-only sandbox preflight blocks before claiming a task or consuming an 
       },
     });
     assert.equal(result.outcome, "preflight-blocked");
-    assert.equal(findTask(f.settings, task.id).task.status, "pending");
+    assert.equal(findTask(f.settings, task.id).task.status, "blocked");
     assert.equal(findTask(f.settings, task.id).task.attempts, 0);
   } finally {
     f.cleanup();
@@ -368,6 +368,33 @@ test("workspace-write preflight verifies readback inside the selected project", 
     });
     assert.deepEqual(result, { ok: true });
     assert.equal(fs.existsSync(canaryPath), false);
+  } finally {
+    f.cleanup();
+  }
+});
+
+test("preflight preserves safe stderr summaries for Codex exit failures", async () => {
+  const f = fixture();
+  try {
+    const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
+    await assert.rejects(
+      preflightCodex(f.settings, task, {
+        executor: async () => ({
+          ok: false,
+          code: "CODEX_EXIT",
+          exitCode: 1,
+          stderrBytes: 2432,
+          stderrSummary: "failed to load configured profile [PATH]",
+          stderr: "private raw stderr content",
+        }),
+      }),
+      (error) => {
+        assert.match(error.message, /failed to load configured profile \[PATH\]/);
+        assert.doesNotMatch(error.message, /private raw stderr content/);
+        assert.doesNotMatch(error.message, /unclassified error/);
+        return true;
+      },
+    );
   } finally {
     f.cleanup();
   }

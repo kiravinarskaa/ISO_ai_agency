@@ -193,11 +193,17 @@ test("manifest symlink escape is rejected", (t) => {
   const saved = `${target}.saved`;
   fs.renameSync(target, saved);
   try {
-    fs.symlinkSync(
-      outside,
-      path.join(f.project, "working", outputs[0]),
-      "junction",
-    );
+    try {
+      fs.symlinkSync(
+        outside,
+        path.join(f.project, "working", outputs[0]),
+        "junction",
+      );
+    } catch (error) {
+      if (["EPERM", "ENOTSUP"].includes(error.code))
+        return t.skip("This Windows environment does not permit creating symlinks.");
+      throw error;
+    }
     assert.throws(
       () =>
         validateManifest(f.manifest, f.manifestPath, config, {

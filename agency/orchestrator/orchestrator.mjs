@@ -1057,7 +1057,7 @@ export async function preflightCodex(
     // Keep only the safe category, not raw Codex stdout or stderr.
     const detail = result.ok
       ? "Codex finished but the sandbox canary could not be read back."
-      : `${result.code || "CODEX_ERROR"}: ${summarizeCodexStderr(result.stderrSummary)} ` +
+      : `${result.code || "CODEX_ERROR"}: ${result.stderrSummary || summarizeCodexStderr("")} ` +
         `(exit ${result.exitCode ?? "none"}; stderr ${result.stderrBytes || 0} bytes).`;
     fail(
       `Preflight failed: ${detail} Task held for operator review; no task attempt was consumed.`,
