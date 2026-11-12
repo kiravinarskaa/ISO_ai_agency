@@ -877,6 +877,29 @@ function summarizeCodexStderr(stderr) {
     : "Codex returned no stderr details.";
 }
 
+/** Return one redacted diagnostic line when known error patterns did not match. */
+function safeCodexStderrExcerpt(stderr) {
+  const lines = String(stderr || "")
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !/^at\s+/.test(line));
+  const line = [...lines].reverse().find((entry) =>
+    /error|failed|denied|missing|not found|unsupported|unauthorized|forbidden/i.test(entry),
+  );
+  if (!line) return "Codex returned an unclassified error; raw stderr was withheld.";
+  if (/api.?key|token|secret|authorization|password|credential|bearer/i.test(line))
+    return "Codex error referenced authentication details; message withheld.";
+
+  return line
+    .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|AIza[A-Za-z0-9_-]{20,}|ya29\.[A-Za-z0-9._-]{12,}|gh[pousr]_[A-Za-z0-9_]{20,})\b/g, "[REDACTED]")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[EMAIL]")
+    .replace(/(?:\/root|\/home\/[^/\s]+|\/app)\/[^\s,]+/g, "[PATH]")
+    .replace(/[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s,]*)?/gi, "[PATH]")
+    .replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi, "[ID]")
+    .slice(0, 180);
+}
+
 /**
  * Start Codex CLI and collect its process result. A zero exit code means only
  * that the command completed; artifact existence, schema/content validation,
@@ -977,7 +1000,12 @@ export function spawnCodex(
         signal,
         stdoutBytes,
         stderrBytes,
-        stderrSummary: summarizeCodexStderr(stderrSample),
+        stderrSummary: (() => {
+          const summary = summarizeCodexStderr(stderrSample);
+          return summary.includes("unclassified")
+            ? safeCodexStderrExcerpt(stderrSample)
+            : summary;
+        })(),
         error: !spawnSucceeded || timedOut || exitCode !== 0
           ? `${details}; stderr summary: ${summarizeCodexStderr(stderrSample)}`
           : null,
