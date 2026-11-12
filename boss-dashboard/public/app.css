@@ -106,6 +106,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--mint); outline: 
 
 .assign-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
 .wide-field, .form-actions { grid-column: 1 / -1; }
+.run-mode-option { display: flex; align-items: center; gap: 10px; }
+.run-mode-option input { width: 18px; min-height: 18px; margin: 0; }
+.run-mode-help { margin: -8px 0 0; color: var(--muted); font-size: 0.9rem; }
 .form-actions { display: flex; align-items: center; gap: 12px; }
 .form-message { min-height: 1em; color: var(--mint); font-size: .78rem; }
 .form-message.error { color: var(--red); }

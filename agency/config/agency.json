@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "workspaceRoot": "D:\\AgentOps",
+  "workspaceRoot": ".",
   "agencyRoot": "agency",
   "projectsRoot": "agency/projects",
   "orchestratorRoot": "agency/orchestrator",

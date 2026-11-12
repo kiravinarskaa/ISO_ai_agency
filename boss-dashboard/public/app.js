@@ -15,6 +15,15 @@ const PRIORITIES = ["Low", "Normal", "High", "Urgent"];
 const state = { tasks: [], conversationId: getConversationId("pm"), refreshing: false };
 const $ = (selector) => document.querySelector(selector);
 
+function updateRunModeForm() {
+  const fullRun = $("#run-eight-agents").checked;
+  $("#assign-employee").closest("label").hidden = fullRun;
+  $("#run-mode-help").hidden = !fullRun;
+  $("#task-description-label").querySelector("textarea").placeholder = fullRun
+    ? "Enter fictional company and assessment details for this synthetic demo."
+    : "Describe the work and what a useful result should include.";
+}
+
 function getConversationId(scope) {
   const key = "boss-dashboard-conversation-" + scope;
   let value = localStorage.getItem(key);
@@ -395,6 +404,9 @@ $("#task-form").addEventListener("submit", async (event) => {
         description: formData.get("description"),
         employeeId: formData.get("employeeId"),
         priority: formData.get("priority"),
+        executionMode: $("#run-eight-agents").checked
+          ? "synthetic-eight-agent"
+          : "manual",
         deadline: formData.get("deadline")
           ? new Date(formData.get("deadline")).toISOString()
           : "",
@@ -402,13 +414,19 @@ $("#task-form").addEventListener("submit", async (event) => {
     });
     state.tasks.unshift(result.task);
     form.reset();
+    updateRunModeForm();
     renderAll();
-    message.textContent = "Task added to the Google Sheet as Queued.";
+    message.textContent = result.task.executionMode === "synthetic-eight-agent"
+      ? "Synthetic eight-agent run added to the Sheet as Queued."
+      : "Task added to the Google Sheet as Queued.";
   } catch (error) {
     message.textContent = error.message;
     message.classList.add("error");
   }
 });
+
+$("#run-eight-agents").addEventListener("change", updateRunModeForm);
+updateRunModeForm();
 
 $("#task-list").addEventListener("click", async (event) => {
   const button = event.target.closest(".save-task");

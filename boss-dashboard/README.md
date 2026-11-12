@@ -18,7 +18,9 @@ easy to read and change.
 
 The app checks the Sheet every 15 seconds. "Active" means that an employee has
 an In Progress task recorded. The dashboard does not itself run Codex. A separate
-Codex worker still needs to claim queued tasks and update their status.
+Railway worker can run the full eight-agent synthetic coursework workflow and
+write each stage's progress back to the Sheet. See the repository's
+[`CLOUD-WORKER.md`](../CLOUD-WORKER.md) for its separate Railway service setup.
 
 Boss sign-in and the dashboard layout do not depend on Google Sheets or agent
 availability. If the Sheet is empty, counts show zero and the task list is empty.
@@ -34,6 +36,7 @@ On first use, the app creates these tabs if they do not exist:
 
 - Task Ledger for assigned tasks and their status history.
 - Chat History for saved chat messages.
+- Run Outputs for final reports created by the optional cloud worker.
 
 The first row of each new tab contains its column names. Do not rename or reorder
 those headings after the app has connected.

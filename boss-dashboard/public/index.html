@@ -99,7 +99,9 @@
           <form id="task-form" class="assign-form">
             <label>Task title<input name="title" maxlength="160" required placeholder="For example: Review access control evidence"></label>
             <label>Assign to<select name="employeeId" id="assign-employee" required></select></label>
-            <label class="wide-field">Description<textarea name="description" maxlength="4000" required placeholder="Describe the work and what a useful result should include."></textarea></label>
+            <label class="wide-field run-mode-option"><input type="checkbox" id="run-eight-agents"> Run the full eight-agent synthetic demo</label>
+            <p class="wide-field run-mode-help" id="run-mode-help" hidden>For coursework demonstrations only. Use fictional information; this text will be sent to your configured AI model.</p>
+            <label class="wide-field" id="task-description-label">Description<textarea name="description" maxlength="4000" required placeholder="Describe the work and what a useful result should include."></textarea></label>
             <label>Priority<select name="priority"><option>Normal</option><option>Low</option><option>High</option><option>Urgent</option></select></label>
             <label>Deadline<input name="deadline" type="datetime-local"></label>
             <div class="form-actions"><button class="button primary" type="submit">Add to task ledger</button><span id="task-form-message" class="form-message" role="status"></span></div>

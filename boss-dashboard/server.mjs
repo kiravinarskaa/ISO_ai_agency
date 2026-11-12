@@ -23,7 +23,8 @@ const CHAT_TAB = "Chat History";
 const TASK_HEADERS = [
   "Task ID", "Timestamp", "Assigned By", "Agent Name", "Task Description",
   "Priority", "Status", "Output / Result Link", "Completion Time", "Title",
-  "Deadline", "Blocker Reason", "Updated At",
+  "Deadline", "Blocker Reason", "Updated At", "Execution Mode",
+  "Parent Task ID", "Project ID",
 ];
 const CHAT_HEADERS = [
   "Conversation ID", "Timestamp", "Speaker", "Employee ID", "Message",
@@ -97,10 +98,19 @@ async function ensureTab(sheets, title, headers) {
       valueInputOption: "RAW",
       requestBody: { values: [headers] },
     });
-  } else if (headers.some((header, index) => row[index] !== header)) {
+  } else if (row.some((value, index) => value !== headers[index])) {
     throw new Error(
       "The " + title + " tab already has different headers. Review it before connecting.",
     );
+  } else if (row.length < headers.length) {
+    // Add new columns on the right while preserving every existing task row.
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: bookId,
+      range: quoteTab(title) + "!" + columnName(row.length + 1) + "1:" +
+        columnName(headers.length) + "1",
+      valueInputOption: "RAW",
+      requestBody: { values: [headers.slice(row.length)] },
+    });
   }
 }
 
@@ -149,6 +159,9 @@ function taskFromRow(row) {
     deadline: cells[10],
     blockerReason: cells[11],
     updatedAt: cells[12],
+    executionMode: cells[13] || "manual",
+    parentTaskId: cells[14],
+    projectId: cells[15],
   };
 }
 
@@ -176,20 +189,21 @@ async function writeTask(task, rowNumber) {
     task.taskId, task.timestamp, task.assignedBy, task.employeeId,
     task.description, task.priority, task.status, task.resultLink,
     task.completionTime, task.title, task.deadline, task.blockerReason,
-    task.updatedAt,
+    task.updatedAt, task.executionMode || "manual", task.parentTaskId || "",
+    task.projectId || "",
   ]];
 
   if (rowNumber) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId(),
-      range: quoteTab(TASK_TAB) + "!A" + rowNumber + ":M" + rowNumber,
+      range: quoteTab(TASK_TAB) + "!A" + rowNumber + ":P" + rowNumber,
       valueInputOption: "RAW",
       requestBody: { values },
     });
   } else {
     await sheets.spreadsheets.values.append({
       spreadsheetId: spreadsheetId(),
-      range: quoteTab(TASK_TAB) + "!A:M",
+      range: quoteTab(TASK_TAB) + "!A:P",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values },
@@ -499,7 +513,9 @@ async function handleApi(request, response, url) {
     if (
       typeof body.title !== "string" || !body.title.trim() ||
       typeof body.description !== "string" || !body.description.trim() ||
-      !EMPLOYEES.some((employee) => employee.id === body.employeeId) ||
+      !(body.executionMode === "synthetic-eight-agent" ||
+        EMPLOYEES.some((employee) => employee.id === body.employeeId)) ||
+      !["manual", "synthetic-eight-agent"].includes(body.executionMode || "manual") ||
       !PRIORITIES.includes(body.priority) ||
       (body.deadline && Number.isNaN(Date.parse(body.deadline)))
     ) {
@@ -511,7 +527,9 @@ async function handleApi(request, response, url) {
       taskId: crypto.randomUUID(),
       timestamp: now,
       assignedBy: "Boss",
-      employeeId: body.employeeId,
+      employeeId: body.executionMode === "synthetic-eight-agent"
+        ? "client-manager"
+        : body.employeeId,
       description: body.description.trim(),
       priority: body.priority,
       status: "Queued",
@@ -521,6 +539,9 @@ async function handleApi(request, response, url) {
       deadline: body.deadline || "",
       blockerReason: "",
       updatedAt: now,
+      executionMode: body.executionMode || "manual",
+      parentTaskId: "",
+      projectId: "",
     };
     await writeTask(task);
     json(response, 201, { task });

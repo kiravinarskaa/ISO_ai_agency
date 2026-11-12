@@ -1,0 +1,14 @@
+{
+  "name": "iso27001-cloud-agent-worker",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node agency/cloud-worker.mjs"
+  },
+  "dependencies": {
+    "googleapis": "^171.0.0"
+  }
+}

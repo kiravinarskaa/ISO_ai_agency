@@ -351,7 +351,8 @@ export function loadConfiguration(workspaceRoot = DEFAULT_WORKSPACE) {
       "Agency paths do not match the approved workspace layout",
       "CONFIG_PATH",
     );
-  if (!["codex", "codex.cmd", "codex.exe"].includes(agency.codex.command))
+  const codexCommand = process.env.CODEX_COMMAND || agency.codex.command;
+  if (!["codex", "codex.cmd", "codex.exe"].includes(codexCommand))
     fail("codex.command must name the Codex CLI executable", "CONFIG_SCHEMA");
   // Return normalized absolute roots and validated settings to all controller functions.
   return {
@@ -360,7 +361,7 @@ export function loadConfiguration(workspaceRoot = DEFAULT_WORKSPACE) {
     orchestratorRoot,
     queueRoot,
     logRoot,
-    codex: agency.codex,
+    codex: { ...agency.codex, command: codexCommand },
     eventWatcher: agency.eventWatcher,
     inputLimits: agency.inputLimits,
     employees,
@@ -786,6 +787,7 @@ function childEnvironment(projectId) {
   // Start with a small allowlist so unrelated parent-process secrets are not inherited.
   const allowed = [
     "PATH",
+    "HOME",
     "PATHEXT",
     "COMSPEC",
     "SYSTEMROOT",
@@ -798,6 +800,10 @@ function childEnvironment(projectId) {
     "HOMEDRIVE",
     "HOMEPATH",
     "CODEX_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_CACHE_HOME",
+    "OPENAI_API_KEY",
   ];
   const env = {};
   // Preserve only environment variables needed to start the CLI and its Windows runtime.
@@ -822,6 +828,7 @@ export function codexInvocation(settings, task) {
     command: settings.codex.command,
     args: [
       "exec",
+      ...(process.env.CODEX_MODEL ? ["--model", process.env.CODEX_MODEL] : []),
       "--sandbox",
       "workspace-write",
       "--skip-git-repo-check",
