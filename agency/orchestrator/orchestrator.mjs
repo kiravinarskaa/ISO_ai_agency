@@ -998,11 +998,18 @@ export async function preflightCodex(
       /* best effort cleanup */
     }
   }
-  if (!result.ok || !readable)
+  if (!result.ok || !readable) {
+    // Keep process-level details, but never include Codex stdout or stderr in logs.
+    const detail = result.ok
+      ? "Codex finished but the sandbox canary could not be read back."
+      : `Codex process failed (${result.code || "CODEX_ERROR"}; ${
+          result.error || "no safe process details"
+        }).`;
     fail(
-      "Codex workspace-write preflight failed; task was not claimed and no attempt was consumed.",
+      `Codex workspace-write preflight failed; task was not claimed and no attempt was consumed. ${detail}`,
       "PREFLIGHT_FAILED",
     );
+  }
   return { ok: true };
 }
 

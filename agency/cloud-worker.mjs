@@ -577,7 +577,14 @@ async function processEmailIntake(sheets) {
         dashboardTask.blockerReason = "Client Manager retry is scheduled by the task queue.";
       } else {
         dashboardTask.status = "Blocked";
-        dashboardTask.blockerReason = sanitizeDiagnostic(outcome.reason || outcome.outcome);
+        // Guard notes explain policy blocks; process diagnostics explain preflight blocks.
+        const detail =
+          outcome.reason ||
+          outcome.guard?.notes?.join("; ") ||
+          outcome.code ||
+          outcome.outcome;
+        dashboardTask.blockerReason = sanitizeDiagnostic(detail);
+        workerLog(`Client Manager stopped (${outcome.code || outcome.outcome}): ${detail}`);
       }
       await updateTask(sheets, dashboardTask);
       return outcome;
