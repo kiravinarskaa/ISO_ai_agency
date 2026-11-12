@@ -47,9 +47,27 @@ function fileHash(file) {
   // Hash the exact bytes on disk so even a small file change is detectable.
   return digest(fs.readFileSync(file));
 }
+function fileHashVariants(file) {
+  // Git may convert text-file line endings between Windows and Linux checkouts.
+  // Receipts are generated on one platform and verified on the other, so accept
+  // the raw bytes plus the LF and CRLF forms of the same text content.
+  const text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+  const variants = [
+    digest(Buffer.from(text, "utf8")),
+    digest(Buffer.from(text.replace(/\n/g, "\r\n"), "utf8")),
+  ];
+  variants.push(fileHash(file));
+  return [...new Set(variants)];
+}
 function kitHash(file) {
   // Installation receipts store a shorter display fingerprint for each file.
   return fileHash(file).slice(0, 16);
+}
+function kitHashVariants(file) {
+  return fileHashVariants(file).map((hash) => hash.slice(0, 16));
+}
+function matchesFileHash(file, expected) {
+  return fileHashVariants(file).includes(expected);
 }
 function idOf(employee) {
   // Keep only routine IDs because display names and other routine fields may change.
@@ -134,11 +152,11 @@ export function inspectMigrationLineage({
         "Original receipt, identity baseline or migration audit record is missing/outside workspace.",
     };
   if (
-    fileHash(backup) !== migration.original_receipt.sha256 ||
-    fileHash(baseline) !== migration.baseline_identity.sha256 ||
-    fileHash(auditFile) !== migration.audit_record_sha256
+    !matchesFileHash(backup, migration.original_receipt.sha256) ||
+    !matchesFileHash(baseline, migration.baseline_identity.sha256) ||
+    !matchesFileHash(auditFile, migration.audit_record_sha256)
   )
-    // Compare exact file hashes to detect replacement or editing of preserved evidence.
+    // Accept only newline-equivalent byte forms; all other edits remain detectable.
     return {
       valid: false,
       reason: "Original receipt/baseline/audit checksum mismatch.",
@@ -206,8 +224,8 @@ export function inspectMigrationLineage({
       !inside(root, priorAuditPath) ||
       !fs.existsSync(priorReceiptPath) ||
       !fs.existsSync(priorAuditPath) ||
-      fileHash(priorReceiptPath) !== prior.receipt.sha256 ||
-      fileHash(priorAuditPath) !== prior.audit_record.sha256
+      !matchesFileHash(priorReceiptPath, prior.receipt.sha256) ||
+      !matchesFileHash(priorAuditPath, prior.audit_record.sha256)
     )
       return {
         valid: false,
@@ -309,14 +327,14 @@ export function inspectInstallation({
         reason: `Required installed file is missing or unsafe: ${rel}.`,
       };
     expectedHashes[rel.replaceAll("\\", "/")] = {
-      short: kitHash(file),
-      full: fileHash(file),
+      shortVariants: kitHashVariants(file),
+      fullVariants: fileHashVariants(file),
     };
   }
   const verifyHashes = (map) =>
     // Every expected path must have the matching short hash in the receipt map.
     Object.entries(expectedHashes).every(
-      ([rel, hashes]) => map?.[rel] === hashes.short,
+      ([rel, hashes]) => hashes.shortVariants.includes(map?.[rel]),
     );
   if (receipt.receipt_provenance === MIGRATION_METHOD) {
     // Migrated receipts need valid lineage plus hashes tied to the current files.
@@ -340,7 +358,7 @@ export function inspectInstallation({
     if (
       !verified ||
       Object.entries(expectedHashes).some(
-        ([rel, hash]) => verified[rel] !== hash.full,
+        ([rel, hash]) => !hash.fullVariants.includes(verified[rel]),
       )
     )
       return {
@@ -390,4 +408,14 @@ export function inspectInstallation({
   };
 }
 
-export { MIGRATION_METHOD, CORE_FILES, digest, fileHash, kitHash, identity };
+export {
+  MIGRATION_METHOD,
+  CORE_FILES,
+  digest,
+  fileHash,
+  fileHashVariants,
+  kitHash,
+  kitHashVariants,
+  matchesFileHash,
+  identity,
+};

@@ -19,6 +19,7 @@ import {
   inspectInstallation,
   inspectMigrationLineage,
   kitHash,
+  kitHashVariants,
 } from "./receipts.mjs";
 
 // Derive the workspace from this script's location so invocation directory does not matter.
@@ -192,7 +193,11 @@ export function migrateWorkspace(
       fail(
         `${entry.employeeId}: original identity cannot be verified against its receipt and baseline.`,
       );
-    if (sourceReceipt.files?.["employee.json"] !== kitHash(baselineFile))
+    if (
+      !kitHashVariants(baselineFile).includes(
+        sourceReceipt.files?.["employee.json"],
+      )
+    )
       fail(
         `${entry.employeeId}: original receipt employee.json checksum does not match the preserved baseline.`,
       );

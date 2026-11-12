@@ -640,6 +640,52 @@ test("demo runner accepts verified migrated receipts without stale identity bloc
   }
 });
 
+// Test goal: migrated receipts remain valid when Git checks out text files with different line endings.
+test("migrated installation receipts tolerate Windows-to-Linux line ending conversion", async () => {
+  const f = fixture();
+  const rewriteLineEndings = (root, newline) => {
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+      const target = path.join(root, entry.name);
+      if (entry.isDirectory()) rewriteLineEndings(target, newline);
+      else if (entry.isFile()) {
+        const text = fs.readFileSync(target, "utf8");
+        fs.writeFileSync(target, text.replace(/\r?\n/g, newline));
+      }
+    }
+  };
+  try {
+    // Simulate migration on a Windows checkout before Git stores normalized LF files.
+    for (const row of ROSTER)
+      rewriteLineEndings(path.join(f.workspace, row.workspaceRoot), "\r\n");
+    makeLegacyReceipts(f);
+    assert.ok(
+      migrateWorkspace(f.workspace, {
+        now: new Date("2026-11-04T12:00:00.000Z"),
+      }).employees.every((row) => row.status === "migrated-verified"),
+    );
+    rewriteLineEndings(f.workspace, "\n");
+    const { manifest } = await runDemo({
+      workspaceRoot: f.workspace,
+      projectId: "TEST-001",
+      dryRun: true,
+      guard,
+    });
+    assert.ok(
+      manifest.agents.every(
+        (row) =>
+          row.installationMarkerReview === null ||
+          row.installationMarkerReview === undefined,
+      ),
+      JSON.stringify(manifest.agents.map((row) => ({
+        employeeId: row.employeeId,
+        installationMarkerReview: row.installationMarkerReview,
+      }))),
+    );
+  } finally {
+    f.cleanup();
+  }
+});
+
 // Test goal: configuration correction creates a linked local migration revision and preserves baseline. Assertions below define the exact expected result.
 test("configuration correction creates a linked local migration revision and preserves baseline", () => {
   const f = fixture();
