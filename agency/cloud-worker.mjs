@@ -15,10 +15,32 @@ import crypto from "node:crypto";
 import { google } from "googleapis";
 import { runDemo, ROSTER } from "./demo/run-demo.mjs";
 import { sanitizeDiagnostic } from "./orchestrator/orchestrator.mjs";
+import {
+  loadConfiguration,
+  listTasks,
+  runOne,
+} from "./orchestrator/orchestrator.mjs";
+import {
+  CONFIG_PATH as GMAIL_CONFIG_PATH,
+  parseIntakeConfig,
+  pollOnce,
+  reconcileCompletedIntakes,
+  loadClientRegistry,
+} from "./integrations/gmail/intake-poller.mjs";
+import {
+  dispatchPendingTasks,
+} from "./start-agency.mjs";
+import {
+  evaluatePublicPreliminary,
+  reservePublicExecution,
+  withPublicIntakeSlot,
+} from "./integrations/gmail/public-intake-policy.mjs";
 
 const AGENCY_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_DIR = path.dirname(AGENCY_DIR);
 const PROJECTS_DIR = path.join(AGENCY_DIR, "projects");
+const WORKER_STATE_DIR = path.join(PROJECTS_DIR, ".worker-state");
+const GMAIL_STATE_DIR = path.join(WORKER_STATE_DIR, "gmail");
 const TASK_TAB = "Task Ledger";
 const OUTPUT_TAB = "Run Outputs";
 const configuredPollMs = Number(process.env.WORKER_POLL_MS || 15_000);
@@ -26,6 +48,8 @@ const POLL_MS = Number.isFinite(configuredPollMs)
   ? Math.max(5_000, configuredPollMs)
   : 15_000;
 const REPORT_CELL_LIMIT = 45_000;
+const GMAIL_POLL_MS = Math.max(15_000, Number(process.env.GMAIL_POLL_MS || 60_000));
+let lastGmailPollAt = 0;
 
 // These headings match the dashboard. New fields are appended so older rows
 // and the original agency Ledger tab are left as they are.
@@ -238,14 +262,14 @@ async function prepareProject(task, projectId) {
   }
 }
 
-async function createEmployeeRows(sheets, parent, projectId) {
+async function createEmployeeRows(sheets, parent, projectId, executionMode = "synthetic-eight-agent") {
   const rows = await readTasks(sheets);
   const stages = new Map(
     rows.filter((row) => row.parentTaskId === parent.taskId)
       .map((row) => [row.employeeId, row]),
   );
   // The original dashboard row becomes the Client Manager's visible work row.
-  parent.executionMode = "synthetic-eight-agent";
+  parent.executionMode = executionMode;
   parent.parentTaskId = parent.taskId;
   parent.projectId = projectId;
   parent.employeeId = ROSTER[0].employeeId;
@@ -261,7 +285,7 @@ async function createEmployeeRows(sheets, parent, projectId) {
       timestamp: now,
       assignedBy: "Cloud worker",
       employeeId: employee.employeeId,
-      description: "Sequential stage in synthetic assessment " + parent.taskId,
+      description: "Sequential stage in " + executionMode + " " + parent.taskId,
       priority: parent.priority,
       status: "Queued",
       resultLink: "",
@@ -270,7 +294,7 @@ async function createEmployeeRows(sheets, parent, projectId) {
       deadline: parent.deadline,
       blockerReason: "",
       updatedAt: now,
-      executionMode: "agent-stage",
+      executionMode: executionMode + "-stage",
       parentTaskId: parent.taskId,
       projectId,
     });
@@ -392,6 +416,210 @@ async function processJob(sheets, job) {
   }
 }
 
+function emailPaths() {
+  // Inbox checkpoint, OAuth refresh tokens, and intake review records belong on
+  // the same Railway volume as the staged project files.
+  return {
+    statePath: path.join(GMAIL_STATE_DIR, "poll-state.json"),
+    registryPath: path.join(GMAIL_STATE_DIR, "client-registry.json"),
+    reviewPath: path.join(GMAIL_STATE_DIR, "review"),
+    logPath: path.join(GMAIL_STATE_DIR, "intake-poll.jsonl"),
+    publicRatePath: path.join(GMAIL_STATE_DIR, "public-rate-state.json"),
+    demoRatePath: path.join(GMAIL_STATE_DIR, "demo-rate-state.json"),
+    customerFollowupStatePath: path.join(GMAIL_STATE_DIR, "customer-followups.json"),
+  };
+}
+
+function workerLog(message) {
+  // Keep terminal output useful while suppressing email addresses and content.
+  console.log("[email worker]", sanitizeDiagnostic(message));
+}
+
+async function ensureEmailTaskRow(sheets, queuedTask) {
+  const rows = await readTasks(sheets);
+  const existing = rows.find((task) =>
+    task.projectId === queuedTask.projectId && task.executionMode.startsWith("email-intake"),
+  );
+  if (existing) return existing;
+
+  const now = new Date().toISOString();
+  return appendTask(sheets, {
+    rowNumber: 0,
+    taskId: queuedTask.id,
+    timestamp: now,
+    assignedBy: "Gmail intake",
+    employeeId: "client-manager",
+    description: "A new inquiry was screened and staged. Email text is kept in the private project volume.",
+    priority: "Normal",
+    status: "Queued",
+    resultLink: "",
+    completionTime: "",
+    title: "New Gmail inquiry",
+    deadline: "",
+    blockerReason: "",
+    updatedAt: now,
+    executionMode: "email-intake",
+    parentTaskId: queuedTask.id,
+    projectId: queuedTask.projectId,
+  });
+}
+
+async function updateEmailProgress(sheets, stages, progress) {
+  const task = stages.get(progress.employeeId);
+  if (!task) return;
+  task.status = statusForAgent(progress);
+  task.blockerReason = ["blocked", "failed"].includes(progress.status)
+    ? sanitizeDiagnostic(progress.blocker || progress.failure || progress.reasonCode)
+    : "";
+  if (task.status === "Completed") task.completionTime = new Date().toISOString();
+  await updateTask(sheets, task);
+  workerLog(`Employee ${progress.employeeId}: ${task.status}`);
+}
+
+async function runEligibleEmailProject(sheets, settings, parent, projectId, paths) {
+  const projectRoot = path.join(PROJECTS_DIR, projectId);
+  const brief = JSON.parse(await fs.readFile(path.join(projectRoot, "working", "client-brief.json"), "utf8"));
+  const publicRecord = JSON.parse(await fs.readFile(path.join(projectRoot, "working", "public-intake-record.json"), "utf8"));
+  const eligibility = evaluatePublicPreliminary({ record: publicRecord, brief, projectRoot });
+  if (!eligibility.eligible) {
+    parent.status = "Blocked";
+    parent.blockerReason = "Intake held for review or missing scope information. No customer email was sent.";
+    await updateTask(sheets, parent);
+    workerLog(`Intake held for review; project ${projectId}; missing items ${eligibility.missing.length}.`);
+    return false;
+  }
+
+  parent.status = "In Progress";
+  parent.blockerReason = "";
+  await updateTask(sheets, parent);
+  const stages = await createEmployeeRows(sheets, parent, projectId, "email-intake-eight-agent");
+  try {
+    const result = await runDemo({
+      workspaceRoot: WORKSPACE_DIR,
+      projectId,
+      onProgress: (progress) => updateEmailProgress(sheets, stages, progress),
+    });
+    const reportSaved = result.manifest.finalStatus === "completed"
+      ? await saveFinalReport(sheets, parent, projectId, result.manifestPath)
+      : false;
+    if (reportSaved) {
+      const projectManager = stages.get("project-manager");
+      projectManager.resultLink = "https://docs.google.com/spreadsheets/d/" +
+        encodeURIComponent(spreadsheetId()) + "/edit";
+      await updateTask(sheets, projectManager);
+    }
+    if (result.manifest.finalStatus !== "completed") {
+      await blockQueuedStages(sheets, stages,
+        "The workflow needs review. See the per-stage status and project files.");
+      parent.status = "Blocked";
+      parent.blockerReason = "One or more employee outputs need review.";
+    } else {
+      parent.status = "Completed";
+      parent.blockerReason = "";
+    }
+    await updateTask(sheets, parent);
+    workerLog(`Email assessment finished; project ${projectId}; outcome ${result.manifest.finalStatus}.`);
+    return result.manifest.finalStatus === "completed";
+  } catch (error) {
+    await blockQueuedStages(sheets, stages, error.message || "Cloud email workflow failed");
+    parent.status = "Blocked";
+    parent.blockerReason = sanitizeDiagnostic(error.message || "Cloud email workflow failed");
+    await updateTask(sheets, parent);
+    throw error;
+  }
+}
+
+async function processEmailIntake(sheets) {
+  if (process.env.EMAIL_INTAKE_ENABLED !== "true") return;
+  if (!process.env.GMAIL_OAUTH_CREDENTIALS_JSON || !process.env.GMAIL_OAUTH_TOKENS_JSON) {
+    console.error("Email intake is enabled but Gmail OAuth variables are missing; inbox polling skipped.");
+    return;
+  }
+  if (Date.now() - lastGmailPollAt < GMAIL_POLL_MS) return;
+  lastGmailPollAt = Date.now();
+  await fs.mkdir(GMAIL_STATE_DIR, { recursive: true });
+  const settings = loadConfiguration(WORKSPACE_DIR);
+  // Keep the agent task queue on the Railway volume so a container restart
+  // cannot silently forget an email already marked seen by Gmail polling.
+  settings.queueRoot = path.join(WORKER_STATE_DIR, "orchestrator-queue");
+  const paths = emailPaths();
+  const gmailConfig = parseIntakeConfig(await fs.readFile(GMAIL_CONFIG_PATH, "utf8"));
+  const poll = await pollOnce({ settings, config: gmailConfig, ...paths });
+  if (poll.outcome === "baseline") {
+    workerLog(`Inbox baseline established; existing messages skipped (${poll.messageCount}). Send a new email to test intake.`);
+  } else {
+    const newCount = poll.results?.filter((row) => row.outcome === "staged_for_classification").length || 0;
+    if (newCount) workerLog(`New inquiry staged: ${newCount}.`);
+  }
+
+  const pending = listTasks(settings, "pending").filter((task) =>
+    task.status === "pending" && task.employeeId === "client-manager" &&
+    task.routine === "client-intake" && task.projectId.startsWith("INTAKE-"),
+  );
+  for (const task of pending) await ensureEmailTaskRow(sheets, task);
+
+  await dispatchPendingTasks(settings, {
+    executeTask: async (currentSettings, { taskId }) => {
+      const task = pending.find((row) => row.id === taskId);
+      if (!task) return { outcome: "empty" };
+      const dashboardTask = await ensureEmailTaskRow(sheets, task);
+      dashboardTask.status = "In Progress";
+      dashboardTask.blockerReason = "";
+      await updateTask(sheets, dashboardTask);
+      workerLog("Client Manager started on a new inquiry.");
+      const outcome = await runOne(currentSettings, { taskId });
+      if (outcome.outcome === "completed") {
+        dashboardTask.status = "Completed";
+        dashboardTask.completionTime = new Date().toISOString();
+        workerLog("Client Manager completed intake classification.");
+      } else if (outcome.outcome === "retry-scheduled") {
+        dashboardTask.status = "Queued";
+        dashboardTask.blockerReason = "Client Manager retry is scheduled by the task queue.";
+      } else {
+        dashboardTask.status = "Blocked";
+        dashboardTask.blockerReason = sanitizeDiagnostic(outcome.reason || outcome.outcome);
+      }
+      await updateTask(sheets, dashboardTask);
+      return outcome;
+    },
+    reserveExecution: (taskId) => reservePublicExecution(
+      taskId, path.join(GMAIL_STATE_DIR, "public-ai-usage.json"),
+    ),
+    intakeSlot: (lockPath, operation) => withPublicIntakeSlot(
+      path.join(GMAIL_STATE_DIR, path.basename(lockPath)), operation,
+    ),
+    writeLog: workerLog,
+  });
+
+  const reconciled = reconcileCompletedIntakes(settings, paths);
+  for (const update of reconciled) {
+    if (update.category !== "new_client_request" || !update.projectId) continue;
+    const registry = loadClientRegistry(paths.registryPath);
+    const intake = registry.intakes.find((row) => row.stagingProjectId === update.projectId);
+    if (!intake?.taskId) continue;
+    const dashboardTask = (await readTasks(sheets)).find((row) => row.projectId === update.projectId);
+    // Never relaunch an already finished or review-blocked AI run after a
+    // container restart. A human can explicitly create a new retry task.
+    if (!dashboardTask || ["Completed", "Blocked"].includes(dashboardTask.status) &&
+      dashboardTask.executionMode === "email-intake-eight-agent") continue;
+    const processedPath = path.join(GMAIL_STATE_DIR, "processed-projects.json");
+    let processed = {};
+    try { processed = JSON.parse(await fs.readFile(processedPath, "utf8")); } catch (error) { if (error.code !== "ENOENT") throw error; }
+    if (processed[update.projectId]) continue;
+
+    try {
+      const completed = await runEligibleEmailProject(sheets, settings, dashboardTask, update.projectId, paths);
+      processed[update.projectId] = completed ? "completed" : "held-for-review";
+    } catch (error) {
+      processed[update.projectId] = "blocked";
+      workerLog(`Email workflow blocked; project ${update.projectId}; ${error.code || "WORKFLOW_ERROR"}.`);
+    }
+    const tempPath = processedPath + ".tmp";
+    await fs.writeFile(tempPath, JSON.stringify(processed, null, 2), { mode: 0o600 });
+    await fs.rename(tempPath, processedPath);
+  }
+}
+
 let busy = false;
 async function pollQueue(sheets) {
   if (busy) return;
@@ -403,6 +631,7 @@ async function pollQueue(sheets) {
     for (const job of jobs) {
       await processJob(sheets, job);
     }
+    await processEmailIntake(sheets);
   } catch (error) {
     console.error("Queue check failed:", sanitizeDiagnostic(error.message));
   } finally {
@@ -432,10 +661,19 @@ server.listen(port, "0.0.0.0", async () => {
     return;
   }
   try {
+    await fs.mkdir(WORKER_STATE_DIR, { recursive: true });
+    await fs.mkdir(GMAIL_STATE_DIR, { recursive: true });
     const sheets = await makeSheetsClient();
     await ensureTab(sheets, TASK_TAB, TASK_HEADERS);
     await ensureOutputsTab(sheets);
-    console.log("Google Sheet queue connected; checking for synthetic eight-agent jobs.");
+    console.log("Google Sheet queue connected; checking for queued work.");
+    if (process.env.EMAIL_INTAKE_ENABLED === "true") {
+      if (!process.env.GMAIL_OAUTH_CREDENTIALS_JSON || !process.env.GMAIL_OAUTH_TOKENS_JSON) {
+        console.error("Email intake remains off: add the Gmail OAuth credentials and token JSON variables.");
+      } else {
+        console.log("Read-only Gmail intake enabled; outbound customer email is disabled in this worker.");
+      }
+    }
     await pollQueue(sheets);
     setInterval(() => pollQueue(sheets), POLL_MS).unref();
   } catch (error) {

@@ -14,7 +14,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Derive local storage paths from this module so callers can run it from any folder.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const PRIVATE_DIR = path.join(HERE, "private");
+// The cloud worker keeps refreshable token files on its mounted private volume.
+// Local use keeps the existing repository-relative private directory.
+export const PRIVATE_DIR = process.env.GMAIL_PRIVATE_DIR
+  ? path.resolve(process.env.GMAIL_PRIVATE_DIR)
+  : path.join(HERE, "private");
 export const CREDENTIALS_PATH = path.join(PRIVATE_DIR, "credentials.json");
 export const TOKENS_PATH = path.join(PRIVATE_DIR, "tokens.json");
 export const GMAIL_READONLY_SCOPE =
@@ -123,6 +127,10 @@ export function parseMessageMetadata(message) {
 
 /** Read credentials only from the explicit private path and return parsed fields. */
 export async function readCredentials(credentialsPath = CREDENTIALS_PATH) {
+  // Railway can supply the Desktop OAuth JSON as a protected variable.
+  if (credentialsPath === CREDENTIALS_PATH && process.env.GMAIL_OAUTH_CREDENTIALS_JSON) {
+    return parseDesktopCredentials(process.env.GMAIL_OAUTH_CREDENTIALS_JSON);
+  }
   // Read OAuth app configuration from the specified local private file; no API call occurs.
   if (
     !fs.existsSync(credentialsPath) ||
@@ -272,6 +280,31 @@ export function writeTokenFile(tokens, tokensPath = TOKENS_PATH) {
 }
 
 function readTokenFile(tokensPath = TOKENS_PATH) {
+  // Prefer a rotated token already written on the mounted volume.
+  if (fs.existsSync(tokensPath) && fs.statSync(tokensPath).isFile()) {
+    try {
+      const tokens = JSON.parse(fs.readFileSync(tokensPath, "utf8").replace(/^\uFEFF/, ""));
+      return selectTokenFields(tokens);
+    } catch (error) {
+      if (error instanceof ConnectorError) throw error;
+      throw new ConnectorError(
+        "INVALID_TOKEN",
+        "The persisted Gmail OAuth token file is invalid. Replace it with valid token JSON.",
+      );
+    }
+  }
+  // The initial refresh token is injected by Railway; refreshed values are saved
+  // to TOKENS_PATH so the worker survives token rotation across restarts.
+  if (tokensPath === TOKENS_PATH && process.env.GMAIL_OAUTH_TOKENS_JSON) {
+    try {
+      return selectTokenFields(JSON.parse(process.env.GMAIL_OAUTH_TOKENS_JSON));
+    } catch {
+      throw new ConnectorError(
+        "INVALID_TOKEN",
+        "Gmail OAuth token variable is unreadable or invalid. Replace it with the authorized token JSON.",
+      );
+    }
+  }
   // Require an existing regular token file before parsing its saved JSON.
   if (!fs.existsSync(tokensPath) || !fs.statSync(tokensPath).isFile()) {
     throw new ConnectorError(

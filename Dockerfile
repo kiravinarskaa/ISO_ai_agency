@@ -17,4 +17,5 @@ COPY . .
 RUN mkdir -p /app/agency/projects
 
 ENV NODE_ENV=production
+ENV GMAIL_PRIVATE_DIR=/app/agency/projects/.worker-state/gmail/private
 CMD ["npm", "start"]
