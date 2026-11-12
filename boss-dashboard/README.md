@@ -41,6 +41,11 @@ On first use, the app creates these tabs if they do not exist:
 The first row of each new tab contains its column names. Do not rename or reorder
 those headings after the app has connected.
 
+The dashboard also reads the existing eight-column `Ledger` tab, which the
+agency workflow updates with each employee's run status. Those rows appear in
+the same task list and employee cards as automatic workflow tasks. This is a
+read-only view; manual assignments continue to be stored in `Task Ledger`.
+
 ## Run on your computer
 
 From this directory, install dependencies and set the environment variables:
@@ -83,3 +88,4 @@ this week. Questions outside those records receive an explicit limitation.
 Railway's Free plan includes a monthly usage credit, not unlimited compute. The
 dashboard is request-driven; a separate continuously running Codex worker may use
 more than the free credit. Review Railway usage before enabling a worker service.
+

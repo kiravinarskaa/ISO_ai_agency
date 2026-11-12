@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { executionLedgerToTasks } from "./execution-ledger.mjs";
 
 // Keep these IDs aligned with the eight roles in the agency runner.
 const EMPLOYEES = [
@@ -20,6 +21,7 @@ const EMPLOYEES = [
 // assigned work and the saved Project Manager chat without changing old columns.
 const TASK_TAB = "Task Ledger";
 const CHAT_TAB = "Chat History";
+const EXECUTION_LEDGER_TAB = "Ledger";
 const TASK_HEADERS = [
   "Task ID", "Timestamp", "Assigned By", "Agent Name", "Task Description",
   "Priority", "Status", "Output / Result Link", "Completion Time", "Title",
@@ -177,8 +179,29 @@ function isWebLink(value) {
 
 async function getTasks() {
   const rows = await readRows(TASK_TAB, TASK_HEADERS);
-  return rows.map(taskFromRow)
-    .filter((task) => task.taskId)
+  const assignedTasks = rows.map(taskFromRow).filter((task) => task.taskId);
+  let executionTasks = [];
+
+  // The agency runner publishes employee stages to the original Ledger tab.
+  // Read it separately so a missing or malformed execution tab cannot stop
+  // the dashboard's normal Task Ledger from loading.
+  try {
+    const sheets = await getSheetsClient();
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId(),
+      range: quoteTab(EXECUTION_LEDGER_TAB) + "!A1:H",
+    });
+    executionTasks = executionLedgerToTasks(result.data.values || []);
+  } catch (error) {
+    // Do not let a missing execution tab interfere with normal task loading.
+    console.warn("Google Sheet execution progress is unavailable.");
+  }
+
+  // Keep tasks manually assigned in Task Ledger and show workflow progress
+  // from Ledger in the same employee cards and task list.
+  const byId = new Map(assignedTasks.map((task) => [task.taskId, task]));
+  for (const task of executionTasks) byId.set(task.taskId, task);
+  return [...byId.values()]
     .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
 }
 
@@ -716,3 +739,4 @@ server.listen(port, "0.0.0.0", () => {
     console.log("Google Sheet is not connected yet; the dashboard will show an empty state until configured.");
   }
 });
+
