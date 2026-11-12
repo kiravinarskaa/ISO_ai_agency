@@ -39,6 +39,8 @@ const PUBLIC = path.join(HERE, "public");
 const COOKIE_NAME = "boss_session";
 const SESSION_HOURS = 12;
 const MAX_BODY_BYTES = 32_000;
+// An old ledger status is not proof that a worker process is still running.
+const PROGRESS_STALE_AFTER_MS = 2 * 60 * 60 * 1000;
 
 function requiredSetting(name) {
   const value = process.env[name]?.trim();
@@ -202,6 +204,14 @@ async function getTasks() {
   const byId = new Map(assignedTasks.map((task) => [task.taskId, task]));
   for (const task of executionTasks) byId.set(task.taskId, task);
   return [...byId.values()]
+    .map((task) => {
+      const lastUpdate = Date.parse(task.updatedAt || task.timestamp || "");
+      return {
+        ...task,
+        staleProgress: task.status === "In Progress" &&
+          (!Number.isFinite(lastUpdate) || Date.now() - lastUpdate > PROGRESS_STALE_AFTER_MS),
+      };
+    })
     .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
 }
 
@@ -399,7 +409,18 @@ function answerFromTasks(question, selectedEmployee, tasks) {
 
   if (text.includes("running") || text.includes("in progress") || text.includes("currently")) {
     const running = relevant.filter((task) => task.status === "In Progress");
-    return label + " has " + running.length + " task(s) marked In Progress.";
+    const stale = running.filter((task) => task.staleProgress);
+    if (!running.length) return "No tasks are marked In Progress in the task ledger.";
+    if (stale.length) {
+      const example = stale[0];
+      const lastUpdate = example.updatedAt || example.timestamp;
+      return label + " has " + running.length + " task(s) marked In Progress in the Sheet; " +
+        stale.length + " have no update in the last 2 hours" +
+        (lastUpdate ? " (for example, " + example.title + " was last updated " + lastUpdate + ")" : "") +
+        ". The dashboard cannot confirm a live process from Sheet status alone; check Railway logs.";
+    }
+    return label + " has " + running.length +
+      " task(s) marked In Progress in the Sheet with updates in the last 2 hours. Check Railway logs to confirm live execution.";
   }
 
   if (text.includes("today")) {

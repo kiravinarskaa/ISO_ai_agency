@@ -123,7 +123,11 @@ function completedOn(task, day) {
 
 function renderMetrics() {
   $("#count-queued").textContent = state.tasks.filter((task) => task.status === "Queued").length;
-  $("#count-progress").textContent = state.tasks.filter((task) => task.status === "In Progress").length;
+  const inProgress = state.tasks.filter((task) => task.status === "In Progress");
+  const staleProgress = inProgress.filter((task) => task.staleProgress);
+  $("#count-progress").textContent = inProgress.length - staleProgress.length;
+  $("#progress-note").textContent = staleProgress.length
+    ? staleProgress.length + " stale In Progress status(es)" : "Updated within 2 hours";
   $("#count-blocked").textContent = state.tasks.filter((task) => task.status === "Blocked").length;
   $("#count-completed").textContent = state.tasks.filter((task) => completedOn(task, localToday())).length;
   $("#today-label").textContent = new Intl.DateTimeFormat("en", {
@@ -138,14 +142,16 @@ function renderEmployees() {
   const today = localToday();
   $("#employee-cards").innerHTML = EMPLOYEES.map((employee) => {
     const theirTasks = state.tasks.filter((task) => task.employeeId === employee.id);
-    const active = theirTasks.find((task) => task.status === "In Progress");
+    const active = theirTasks.find((task) => task.status === "In Progress" && !task.staleProgress);
+    const stale = theirTasks.find((task) => task.status === "In Progress" && task.staleProgress);
     const next = theirTasks.find((task) => task.status === "Queued");
     const blocked = theirTasks.find((task) => task.status === "Blocked");
     const completed = theirTasks.filter((task) => completedOn(task, today)).length;
-    const status = active ? "Active" : blocked ? "Blocked" : "Idle";
-    const statusClass = active ? "in-progress" : blocked ? "blocked" : "idle";
+    const status = active ? "Recent update" : stale ? "Stale" : blocked ? "Blocked" : "Idle";
+    const statusClass = active ? "in-progress" : stale ? "stale" : blocked ? "blocked" : "idle";
     const currentLabel = active
-      ? "Working on: " + active.title
+      ? "Recently updated on: " + active.title
+      : stale ? "No recent update: " + stale.title + " · " + formatDate(stale.updatedAt || stale.timestamp)
       : blocked ? "Blocked on: " + blocked.title
       : next ? "Next in queue: " + next.title : "No open task assigned";
     return '<article class="employee-card">' +
@@ -206,7 +212,9 @@ function renderTasks() {
       "</div></div><div><span class=\"priority-pill " +
       escapeAttribute(task.priority.toLowerCase().replace(/[^a-z-]/g, "")) + "\">" +
       escapeHtml(task.priority) + "</span> <span class=\"status-pill " + statusClass(task.status) +
-      '">' + escapeHtml(task.status) + "</span></div></div>" +
+      '">' + escapeHtml(task.status) + "</span>" +
+      (task.staleProgress ? ' <span class="status-pill stale">No update &gt;2h</span>' : "") +
+      "</div></div>" +
       '<p class="task-description">' + escapeHtml(task.description) + "</p>" +
       '<div class="task-actions"><label>Status<select class="task-status">' + statusOptions +
       '</select></label><label>Blocker reason<input class="task-blocker" value="' +

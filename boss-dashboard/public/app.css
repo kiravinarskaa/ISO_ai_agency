@@ -79,6 +79,7 @@ h3 { margin-bottom: 16px; font-size: .98rem; }
 .status-pill, .priority-pill { display: inline-flex; align-items: center; border-radius: 30px; padding: 4px 8px; font-size: .66rem; font-weight: 700; white-space: nowrap; }
 .status-pill.queued { background: #263247; color: #bdc8d9; }
 .status-pill.in-progress { background: #153e3c; color: var(--mint); }
+.status-pill.stale { background: #403720; color: #f1c75b; }
 .status-pill.blocked { background: #482a30; color: var(--red); }
 .status-pill.completed { background: #1c3446; color: var(--blue); }
 .status-pill.idle { background: #263247; color: #bdc8d9; }
