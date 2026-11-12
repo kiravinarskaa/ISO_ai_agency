@@ -977,6 +977,7 @@ export function spawnCodex(
         signal,
         stdoutBytes,
         stderrBytes,
+        stderrSummary: summarizeCodexStderr(stderrSample),
         error: !spawnSucceeded || timedOut || exitCode !== 0
           ? `${details}; stderr summary: ${summarizeCodexStderr(stderrSample)}`
           : null,
@@ -1025,14 +1026,13 @@ export async function preflightCodex(
     }
   }
   if (!result.ok || !readable) {
-    // Keep process-level details, but never include Codex stdout or stderr in logs.
+    // Keep only the safe category, not raw Codex stdout or stderr.
     const detail = result.ok
       ? "Codex finished but the sandbox canary could not be read back."
-      : `Codex process failed (${result.code || "CODEX_ERROR"}; ${
-          result.error || "no safe process details"
-        }).`;
+      : `${result.code || "CODEX_ERROR"}: ${summarizeCodexStderr(result.stderrSummary)} ` +
+        `(exit ${result.exitCode ?? "none"}; stderr ${result.stderrBytes || 0} bytes).`;
     fail(
-      `Codex workspace-write preflight failed; task was not claimed and no attempt was consumed. ${detail}`,
+      `Preflight failed: ${detail} Task held for operator review; no task attempt was consumed.`,
       "PREFLIGHT_FAILED",
     );
   }
@@ -1675,6 +1675,22 @@ export async function runOne(
         reason += ` Lease cleanup failed: ${sanitizeDiagnostic(leaseError.message)}`;
       }
     }
+    // Do not invoke a failing preflight every poll; keep this task blocked until
+    // an operator fixes the cloud setup and explicitly recovers it.
+    const failure = {
+      code: error.code || "PREFLIGHT_FAILED",
+      message: reason,
+    };
+    finishTask(settings, selected, row.filePath, "blocked", {
+      finishedAt: new Date().toISOString(),
+      failure,
+    });
+    appendJournal(settings, {
+      event: "task_blocked_preflight",
+      taskId: selected.id,
+      projectId: selected.projectId,
+      code: failure.code,
+    });
     return {
       outcome: "preflight-blocked",
       taskId: selected.id,
@@ -1915,10 +1931,10 @@ export function recoverBlockedTask(settings, taskId, { by, reason } = {}) {
   const row = findTask(settings, taskId);
   if (
     row.task.status !== "blocked" ||
-    row.task.failure?.code !== "GUARD_SKIPPED_ALREADY_RAN"
+    !["GUARD_SKIPPED_ALREADY_RAN", "PREFLIGHT_FAILED"].includes(row.task.failure?.code)
   )
     fail(
-      "Only a period/duplicate guard-blocked task can be explicitly recovered",
+      "Only a period/duplicate guard or preflight-blocked task can be explicitly recovered",
       "RECOVERY_STATE",
     );
   if (row.task.attempts >= row.task.maxAttempts)
