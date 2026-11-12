@@ -857,6 +857,26 @@ export function sanitizeDiagnostic(value) {
     .slice(0, 300);
 }
 
+/** Describe common Codex CLI failures without logging its raw stderr. */
+function summarizeCodexStderr(stderr) {
+  const text = String(stderr || "");
+  if (/invalid[_ ]api[_ ]key|unauthorized|\b401\b/i.test(text))
+    return "OpenAI rejected the API credential.";
+  if (/\b429\b|rate.?limit|too many requests/i.test(text))
+    return "OpenAI rate limited the Codex request.";
+  if (/model.{0,40}(not found|unsupported|not available|no access)/i.test(text))
+    return "The configured Codex model is unavailable to this API key.";
+  if (/currently, only the default worker can be used/i.test(text))
+    return "Codex reports that only its default worker is available.";
+  if (/bubblewrap|\bbwrap\b|unshare|sandbox.{0,40}(failed|denied|unsupported)|operation not permitted/i.test(text))
+    return "Codex could not start its restricted workspace sandbox.";
+  if (/unknown option|unexpected argument|unrecognized option/i.test(text))
+    return "The installed Codex CLI rejected one of the configured command-line options.";
+  return text.trim()
+    ? "Codex returned an unclassified error; raw stderr was withheld."
+    : "Codex returned no stderr details.";
+}
+
 /**
  * Start Codex CLI and collect its process result. A zero exit code means only
  * that the command completed; artifact existence, schema/content validation,
@@ -873,7 +893,8 @@ export function spawnCodex(
     // Measure elapsed time with a monotonic clock that is not affected by wall-clock changes.
     const startedAt = process.hrtime.bigint();
     let stdoutBytes = 0,
-      stderrBytes = 0;
+      stderrBytes = 0,
+      stderrSample = "";
     // Start Codex with the restricted working directory, environment and piped prompt input.
     const child = spawnImpl(invocation.command, invocation.args, {
       cwd: invocation.cwd,
@@ -914,6 +935,9 @@ export function spawnCodex(
     });
     child.stderr.on("data", (data) => {
       stderrBytes += data.length;
+      // Keep only a small in-memory sample for safe error categorization.
+      if (stderrSample.length < 8192)
+        stderrSample += data.toString("utf8").slice(0, 8192 - stderrSample.length);
     });
     // A process error means the CLI could not be started; record a structured failure.
     child.on("error", (error) =>
@@ -953,7 +977,9 @@ export function spawnCodex(
         signal,
         stdoutBytes,
         stderrBytes,
-        error: !spawnSucceeded || timedOut || exitCode !== 0 ? details : null,
+        error: !spawnSucceeded || timedOut || exitCode !== 0
+          ? `${details}; stderr summary: ${summarizeCodexStderr(stderrSample)}`
+          : null,
       });
     });
     // Send the task prompt over stdin, then close stdin to tell Codex input is complete.
@@ -1639,11 +1665,21 @@ export async function runOne(
       (executor === spawnCodex ? preflightCodex : async () => ({ ok: true }))
     )(settings, selected, { executor });
   } catch (error) {
+    let reason = sanitizeDiagnostic(error.message);
+    // Guard creates a lease before preflight. Release it when preflight fails so
+    // the next queue poll does not mistake this failed check for active work.
+    if (guard?.claim?.token) {
+      try {
+        finishEmployeeLease(settings, guard.claim.token, "partial", selected);
+      } catch (leaseError) {
+        reason += ` Lease cleanup failed: ${sanitizeDiagnostic(leaseError.message)}`;
+      }
+    }
     return {
       outcome: "preflight-blocked",
       taskId: selected.id,
       code: error.code || "PREFLIGHT_FAILED",
-      reason: sanitizeDiagnostic(error.message),
+      reason,
     };
   }
   const claimed = moveClaim(settings, row);
