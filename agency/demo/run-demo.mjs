@@ -347,6 +347,16 @@ function invocationFor(settings, employeeRoot, projectRoot, prompt) {
     throw Object.assign(new Error(`Unsupported CODEX_PROVIDER: ${provider}`), { code: "MODEL_PROVIDER" });
   if (provider === "groq" && !process.env.GROQ_API_KEY)
     throw Object.assign(new Error("GROQ_API_KEY is required when CODEX_PROVIDER=groq"), { code: "MODEL_PROVIDER" });
+  const remoteOllamaUrl = String(process.env.OLLAMA_BASE_URL || "").trim();
+  const remoteOllama = provider === "ollama" && Boolean(remoteOllamaUrl);
+  if (remoteOllama) {
+    let parsed;
+    try { parsed = new URL(remoteOllamaUrl); } catch {}
+    if (!parsed || parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash)
+      throw Object.assign(new Error("OLLAMA_BASE_URL must be an HTTPS URL without credentials, query, or fragment."), { code: "MODEL_PROVIDER" });
+    if (!process.env.OLLAMA_API_KEY)
+      throw Object.assign(new Error("OLLAMA_API_KEY is required for remote Ollama and must be enforced by the HTTPS tunnel/proxy."), { code: "MODEL_PROVIDER" });
+  }
   const groqConfig = provider === "groq"
     ? [
         "-c", 'model_provider="groq"',
@@ -357,12 +367,22 @@ function invocationFor(settings, employeeRoot, projectRoot, prompt) {
         "-c", 'model_providers.groq.wire_api="responses"',
       ]
     : [];
+  const ollamaRemoteConfig = remoteOllama
+    ? [
+        "-c", 'model_provider="ollama_remote"',
+        "-c", 'model_providers.ollama_remote.name="Remote Ollama"',
+        "-c", `model_providers.ollama_remote.base_url=${JSON.stringify(remoteOllamaUrl.replace(/\/+$/, ""))}`,
+        "-c", 'model_providers.ollama_remote.env_key="OLLAMA_API_KEY"',
+        "-c", 'model_providers.ollama_remote.wire_api="responses"',
+      ]
+    : [];
   return {
     command: settings.codex.command,
     args: [
       "exec",
-      ...(provider === "ollama" ? ["--oss", "--local-provider", "ollama"] : []),
+      ...(provider === "ollama" && !remoteOllama ? ["--oss", "--local-provider", "ollama"] : []),
       ...groqConfig,
+      ...ollamaRemoteConfig,
       ...(process.env.CODEX_MODEL ? ["--model", process.env.CODEX_MODEL] : []),
       "--sandbox",
       "workspace-write",
@@ -375,7 +395,7 @@ function invocationFor(settings, employeeRoot, projectRoot, prompt) {
     ],
     cwd: employeeRoot,
     prompt,
-    env: {},
+    env: remoteOllama ? { OLLAMA_API_KEY: process.env.OLLAMA_API_KEY } : {},
   };
 }
 /**

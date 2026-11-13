@@ -271,7 +271,7 @@ function writingExecutor(
     const employeeId = ROSTER.find((row) =>
       invocation.cwd.endsWith(row.employeeId),
     ).employeeId;
-    seen.push({ employeeId, args: invocation.args, prompt: invocation.prompt });
+    seen.push({ employeeId, args: invocation.args, prompt: invocation.prompt, env: invocation.env });
     if (failAt === employeeId)
       return { ok: false, exitCode: 7, error: "mock failure" };
     const match =
@@ -387,14 +387,18 @@ test("eight-agent runner selects Ollama while preserving workspace sandbox", asy
   const f = fixture();
   const previousProvider = process.env.CODEX_PROVIDER;
   const previousModel = process.env.CODEX_MODEL;
+  const previousOllamaUrl = process.env.OLLAMA_BASE_URL;
   t.after(() => {
     if (previousProvider === undefined) delete process.env.CODEX_PROVIDER;
     else process.env.CODEX_PROVIDER = previousProvider;
     if (previousModel === undefined) delete process.env.CODEX_MODEL;
     else process.env.CODEX_MODEL = previousModel;
+    if (previousOllamaUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+    else process.env.OLLAMA_BASE_URL = previousOllamaUrl;
     f.cleanup();
   });
   process.env.CODEX_PROVIDER = "ollama";
+  delete process.env.OLLAMA_BASE_URL;
   process.env.CODEX_MODEL = "gpt-oss:20b";
   const seen = [];
   await runDemo({
@@ -407,6 +411,43 @@ test("eight-agent runner selects Ollama while preserving workspace sandbox", asy
   assert.deepEqual(seen[0].args.slice(0, 6), [
     "exec", "--oss", "--local-provider", "ollama", "--model", "gpt-oss:20b",
   ]);
+  assert.equal(seen[0].args[seen[0].args.indexOf("--sandbox") + 1], "workspace-write");
+});
+
+test("eight-agent runner configures secure remote Ollama for preflight and tasks", async (t) => {
+  const f = fixture();
+  const previousProvider = process.env.CODEX_PROVIDER;
+  const previousModel = process.env.CODEX_MODEL;
+  const previousOllamaUrl = process.env.OLLAMA_BASE_URL;
+  const previousOllamaKey = process.env.OLLAMA_API_KEY;
+  t.after(() => {
+    if (previousProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = previousProvider;
+    if (previousModel === undefined) delete process.env.CODEX_MODEL;
+    else process.env.CODEX_MODEL = previousModel;
+    if (previousOllamaUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+    else process.env.OLLAMA_BASE_URL = previousOllamaUrl;
+    if (previousOllamaKey === undefined) delete process.env.OLLAMA_API_KEY;
+    else process.env.OLLAMA_API_KEY = previousOllamaKey;
+    f.cleanup();
+  });
+  process.env.CODEX_PROVIDER = "ollama";
+  process.env.CODEX_MODEL = "gpt-oss:20b";
+  process.env.OLLAMA_BASE_URL = "https://ollama.example.test/v1/";
+  process.env.OLLAMA_API_KEY = "test-tunnel-token";
+  const seen = [];
+  await runDemo({
+    workspaceRoot: f.workspace,
+    projectId: "TEST-001",
+    executor: writingExecutor(f, { seen }),
+    preflight,
+    guard,
+  });
+  assert.equal(seen[0].args.includes("--oss"), false);
+  assert.ok(seen[0].args.includes('model_provider="ollama_remote"'));
+  assert.ok(seen[0].args.includes('model_providers.ollama_remote.base_url="https://ollama.example.test/v1"'));
+  assert.ok(seen[0].args.includes('model_providers.ollama_remote.env_key="OLLAMA_API_KEY"'));
+  assert.equal(seen[0].env.OLLAMA_API_KEY, "test-tunnel-token");
   assert.equal(seen[0].args[seen[0].args.indexOf("--sandbox") + 1], "workspace-write");
 });
 

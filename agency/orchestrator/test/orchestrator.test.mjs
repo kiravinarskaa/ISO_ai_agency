@@ -1549,8 +1549,10 @@ test("Codex invocation selects the local Ollama provider when configured", () =>
   const f = fixture();
   const originalProvider = process.env.CODEX_PROVIDER;
   const originalModel = process.env.CODEX_MODEL;
+  const originalOllamaUrl = process.env.OLLAMA_BASE_URL;
   try {
     process.env.CODEX_PROVIDER = "ollama";
+    delete process.env.OLLAMA_BASE_URL;
     process.env.CODEX_MODEL = "gpt-oss:20b";
     const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
     const invocation = codexInvocation(f.settings, task);
@@ -1564,6 +1566,41 @@ test("Codex invocation selects the local Ollama provider when configured", () =>
     else process.env.CODEX_PROVIDER = originalProvider;
     if (originalModel === undefined) delete process.env.CODEX_MODEL;
     else process.env.CODEX_MODEL = originalModel;
+    if (originalOllamaUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+    else process.env.OLLAMA_BASE_URL = originalOllamaUrl;
+    f.cleanup();
+  }
+});
+
+test("Codex invocation configures secure remote Ollama without local-only flags", () => {
+  const f = fixture();
+  const originalProvider = process.env.CODEX_PROVIDER;
+  const originalModel = process.env.CODEX_MODEL;
+  const originalOllamaUrl = process.env.OLLAMA_BASE_URL;
+  const originalOllamaKey = process.env.OLLAMA_API_KEY;
+  try {
+    process.env.CODEX_PROVIDER = "ollama";
+    process.env.CODEX_MODEL = "gpt-oss:20b";
+    process.env.OLLAMA_BASE_URL = "https://ollama.example.test/v1/";
+    process.env.OLLAMA_API_KEY = "test-tunnel-token";
+    const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
+    const invocation = codexInvocation(f.settings, task);
+    assert.equal(invocation.args.includes("--oss"), false);
+    assert.ok(invocation.args.includes('-c'));
+    assert.ok(invocation.args.includes('model_provider="ollama_remote"'));
+    assert.ok(invocation.args.includes('model_providers.ollama_remote.base_url="https://ollama.example.test/v1"'));
+    assert.ok(invocation.args.includes('model_providers.ollama_remote.env_key="OLLAMA_API_KEY"'));
+    assert.equal(invocation.env.OLLAMA_API_KEY, "test-tunnel-token");
+    assert.equal(invocation.args[invocation.args.indexOf("--sandbox") + 1], "workspace-write");
+  } finally {
+    if (originalProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = originalProvider;
+    if (originalModel === undefined) delete process.env.CODEX_MODEL;
+    else process.env.CODEX_MODEL = originalModel;
+    if (originalOllamaUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+    else process.env.OLLAMA_BASE_URL = originalOllamaUrl;
+    if (originalOllamaKey === undefined) delete process.env.OLLAMA_API_KEY;
+    else process.env.OLLAMA_API_KEY = originalOllamaKey;
     f.cleanup();
   }
 });

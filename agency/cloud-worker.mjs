@@ -668,11 +668,15 @@ server.listen(port, "0.0.0.0", async () => {
     console.error("Agent processing is disabled: CODEX_PROVIDER must be 'openai', 'ollama', or 'groq'.");
     return;
   }
+  const remoteOllama = codexProvider === "ollama" && Boolean(String(process.env.OLLAMA_BASE_URL || "").trim());
   if (!process.env.CODEX_MODEL ||
       (codexProvider === "openai" && !process.env.OPENAI_API_KEY) ||
-      (codexProvider === "groq" && !process.env.GROQ_API_KEY)) {
+      (codexProvider === "groq" && !process.env.GROQ_API_KEY) ||
+      (remoteOllama && !process.env.OLLAMA_API_KEY)) {
     console.error(codexProvider === "ollama"
-      ? "Agent processing is disabled: set CODEX_MODEL and run Ollama on this worker host."
+      ? remoteOllama
+        ? "Agent processing is disabled: remote Ollama needs OLLAMA_BASE_URL, OLLAMA_API_KEY, and CODEX_MODEL."
+        : "Agent processing is disabled: set CODEX_MODEL and run Ollama on this worker host."
       : codexProvider === "groq"
         ? "Agent processing is disabled: set GROQ_API_KEY and CODEX_MODEL before enabling Codex runs."
         : "Agent processing is disabled: set OPENAI_API_KEY and CODEX_MODEL before enabling Codex runs.");
