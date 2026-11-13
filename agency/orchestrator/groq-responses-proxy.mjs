@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 export const GROQ_RESPONSES_UNSUPPORTED_FIELDS = Object.freeze([
   "include",
   "previous_response_id",
+  "store",
   "prompt",
   "prompt_cache_key",
   "safety_identifier",

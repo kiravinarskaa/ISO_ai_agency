@@ -46,7 +46,6 @@ test("Groq request adaptation removes documented unsupported fields only", () =>
     model: "openai/gpt-oss-20b",
     input: "hello",
     reasoning: { effort: "low" },
-    store: false,
     custom: "preserved",
   });
   assert.equal(request.prompt_cache_key, "thread-test");
@@ -80,6 +79,7 @@ test("Groq Responses bridge authenticates locally, strips fields, and streams up
       body: JSON.stringify({
         model: "openai/gpt-oss-20b",
         input: "hello",
+        store: false,
         prompt_cache_key: "thread-test",
         include: ["reasoning.encrypted_content"],
       }),
