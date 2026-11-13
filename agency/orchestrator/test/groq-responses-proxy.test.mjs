@@ -179,3 +179,39 @@ test("interrupted Groq streams log safe transport metadata only", async () => {
     await proxy.close();
   }
 });
+
+test("Groq rejection logs safe error category and rate-limit headers without error message", async () => {
+  const logs = [];
+  const proxy = await startGroqResponsesProxy({
+    apiKey: "gsk-proxy-test-key",
+    loggerImpl: { info: (...args) => logs.push(args.join(" ")), warn: (...args) => logs.push(args.join(" ")) },
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: { type: "rate_limit_error", code: "rate_limit_exceeded", message: "private rate limit detail" },
+    }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": "7",
+        "x-request-id": "req-groq-test",
+        "x-ratelimit-remaining-tokens": "0",
+        "x-ratelimit-reset-tokens": "4.2s",
+      },
+    }),
+  });
+  try {
+    const response = await postLocal(`${proxy.baseUrl}/responses`, {
+      headers: { authorization: `Bearer ${proxy.token}`, "content-type": "application/json" },
+      body: JSON.stringify({ model: "openai/gpt-oss-20b", input: "private prompt" }),
+    });
+    assert.equal(response.status, 429);
+    const diagnostic = logs.find((entry) => entry.includes("upstream rejected request"));
+    assert.ok(diagnostic);
+    assert.match(diagnostic, /"messageCategory":"rate_limit"/);
+    assert.match(diagnostic, /"x-ratelimit-remaining-tokens":"0"/);
+    assert.match(diagnostic, /"retryAfter":"7"/);
+    assert.equal(diagnostic.includes("private rate limit detail"), false);
+    assert.equal(diagnostic.includes("private prompt"), false);
+  } finally {
+    await proxy.close();
+  }
+});

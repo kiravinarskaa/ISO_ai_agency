@@ -188,8 +188,39 @@ export async function startGroqResponsesProxy({
         }
       };
       if (upstream.status >= 400) {
+        let providerError = null;
+        try {
+          const body = await upstream.clone().json();
+          const error = body?.error && typeof body.error === "object" ? body.error : body;
+          const message = typeof error?.message === "string" ? error.message : "";
+          const messageCategory = /quota|billing|credit|payment/i.test(message)
+            ? "quota_or_billing"
+            : /token.{0,30}(limit|maximum|exceed)|context length|too many tokens/i.test(message)
+              ? "request_token_limit"
+              : /rate.?limit|too many requests|requests per|tokens per|rpm|tpm|rpd|tpd/i.test(message)
+                ? "rate_limit"
+                : message ? "provider_error" : null;
+          providerError = {
+            type: typeof error?.type === "string" ? error.type.slice(0, 100) : null,
+            code: typeof error?.code === "string" ? error.code.slice(0, 100) : null,
+            messageCategory,
+          };
+        } catch {
+          /* Error bodies can be non-JSON; never log their raw content. */
+        }
         loggerImpl.warn("[groq responses proxy] upstream rejected request", JSON.stringify({
           status: upstream.status,
+          requestId: upstream.headers.get("x-request-id"),
+          retryAfter: upstream.headers.get("retry-after"),
+          rateLimits: Object.fromEntries([
+            "x-ratelimit-limit-requests",
+            "x-ratelimit-limit-tokens",
+            "x-ratelimit-remaining-requests",
+            "x-ratelimit-remaining-tokens",
+            "x-ratelimit-reset-requests",
+            "x-ratelimit-reset-tokens",
+          ].flatMap((name) => upstream.headers.has(name) ? [[name, upstream.headers.get(name)]] : [])),
+          providerError,
           shape: groqRequestShape(payload),
         }));
       }
