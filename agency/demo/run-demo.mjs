@@ -350,6 +350,7 @@ function invocationFor(settings, employeeRoot, projectRoot, prompt) {
   const groqConfig = provider === "groq"
     ? [
         "-c", 'model_provider="groq"',
+        "-c", 'model_reasoning_effort="low"',
         "-c", 'model_providers.groq.name="Groq"',
         "-c", 'model_providers.groq.base_url="https://api.groq.com/openai/v1"',
         "-c", 'model_providers.groq.env_key="GROQ_API_KEY"',

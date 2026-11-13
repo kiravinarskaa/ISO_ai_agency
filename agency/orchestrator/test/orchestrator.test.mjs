@@ -1569,9 +1569,10 @@ test("Codex invocation configures Groq Responses API and keeps workspace sandbox
     process.env.GROQ_API_KEY = "gsk-test-worker-key";
     const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
     const invocation = codexInvocation(f.settings, task);
-    assert.deepEqual(invocation.args.slice(0, 11), [
+    assert.deepEqual(invocation.args.slice(0, 13), [
       "exec",
       "-c", 'model_provider="groq"',
+      "-c", 'model_reasoning_effort="low"',
       "-c", 'model_providers.groq.name="Groq"',
       "-c", 'model_providers.groq.base_url="https://api.groq.com/openai/v1"',
       "-c", 'model_providers.groq.env_key="GROQ_API_KEY"',

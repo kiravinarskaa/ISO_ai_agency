@@ -435,9 +435,10 @@ test("eight-agent runner configures Groq Responses API while preserving workspac
     preflight,
     guard,
   });
-  assert.deepEqual(seen[0].args.slice(0, 11), [
+  assert.deepEqual(seen[0].args.slice(0, 13), [
     "exec",
     "-c", 'model_provider="groq"',
+    "-c", 'model_reasoning_effort="low"',
     "-c", 'model_providers.groq.name="Groq"',
     "-c", 'model_providers.groq.base_url="https://api.groq.com/openai/v1"',
     "-c", 'model_providers.groq.env_key="GROQ_API_KEY"',
