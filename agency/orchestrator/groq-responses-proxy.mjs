@@ -109,6 +109,10 @@ export async function startGroqResponsesProxy({
         return;
       }
 
+      // This field-only trace makes provider compatibility diagnosable even when
+      // an upstream error is delivered inside an HTTP 200 streaming response.
+      console.info("[groq responses proxy] request shape", JSON.stringify(groqRequestShape(payload)));
+
       const upstream = await fetchImpl("https://api.groq.com/openai/v1/responses", {
         method: "POST",
         headers: {
