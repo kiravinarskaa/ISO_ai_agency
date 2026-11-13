@@ -637,6 +637,40 @@ test("successful execution with valid output is completed and diagnostics record
 });
 
 // Test goal: Codex subprocess diagnostics distinguish startup failure, nonzero exit, and timeout without logging output secrets. Assertions below define the exact expected result.
+test("Codex exec receives the configured OpenAI key as CODEX_API_KEY", async () => {
+  const f = fixture();
+  const originalOpenAIKey = process.env.OPENAI_API_KEY;
+  const originalCodexKey = process.env.CODEX_API_KEY;
+  process.env.OPENAI_API_KEY = "sk-test-worker-key";
+  delete process.env.CODEX_API_KEY;
+  try {
+    const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
+    let childEnv;
+    const result = await spawnCodex(f.settings, task, {
+      invocation: { command: "codex", args: [], cwd: f.workspace, env: {} },
+      spawnImpl: (_command, _args, options) => {
+        childEnv = options.env;
+        const child = new EventEmitter();
+        child.pid = 1;
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        child.stdin = { end() {} };
+        process.nextTick(() => child.emit("close", 0, null));
+        return child;
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.equal(childEnv.OPENAI_API_KEY, "sk-test-worker-key");
+    assert.equal(childEnv.CODEX_API_KEY, "sk-test-worker-key");
+  } finally {
+    if (originalOpenAIKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalOpenAIKey;
+    if (originalCodexKey === undefined) delete process.env.CODEX_API_KEY;
+    else process.env.CODEX_API_KEY = originalCodexKey;
+    f.cleanup();
+  }
+});
+
 test("Codex subprocess diagnostics distinguish startup failure, nonzero exit, and timeout without logging output secrets", async () => {
   const f = fixture();
   try {

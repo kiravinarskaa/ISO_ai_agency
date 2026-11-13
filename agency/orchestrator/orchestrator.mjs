@@ -813,6 +813,12 @@ function childEnvironment(projectId) {
     );
     if (actual) env[actual] = process.env[actual];
   }
+  // Current Codex CLI non-interactive `exec` uses CODEX_API_KEY. Keep the
+  // service's standard OPENAI_API_KEY setting and map it for Codex subprocesses.
+  const openAiApiKey = Object.keys(process.env).find(
+    (entry) => entry.toUpperCase() === "OPENAI_API_KEY",
+  );
+  if (openAiApiKey) env.CODEX_API_KEY = process.env[openAiApiKey];
   env.CLIENT_MANAGER_PROJECT_ID = projectId;
   return env;
 }
