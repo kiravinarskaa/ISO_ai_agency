@@ -144,3 +144,38 @@ test("rejected-request diagnostics expose request shape without prompt or tool c
   assert.deepEqual(shape.tools, [{ type: "function", fields: ["description", "name", "parameters", "type"], functionFields: [] }]);
   assert.equal(JSON.stringify(shape).includes("private"), false);
 });
+
+test("interrupted Groq streams log safe transport metadata only", async () => {
+  const logs = [];
+  const proxy = await startGroqResponsesProxy({
+    apiKey: "gsk-proxy-test-key",
+    loggerImpl: { info: (...args) => logs.push(args.join(" ")), warn: (...args) => logs.push(args.join(" ")) },
+    fetchImpl: async () => {
+      let sent = false;
+      return new Response(new ReadableStream({
+      pull(controller) {
+        if (sent) {
+          controller.error(Object.assign(new Error("private upstream detail"), { code: "ECONNRESET" }));
+          return;
+        }
+        sent = true;
+        controller.enqueue(new TextEncoder().encode('event: response.created\ndata: {"type":"response.created"}\n\n'));
+      },
+      }), { status: 200, headers: { "content-type": "text/event-stream" } });
+    },
+  });
+  try {
+    await assert.rejects(() => postLocal(`${proxy.baseUrl}/responses`, {
+      headers: { authorization: `Bearer ${proxy.token}`, "content-type": "application/json" },
+      body: JSON.stringify({ model: "openai/gpt-oss-20b", input: "private prompt" }),
+    }));
+    const diagnostic = logs.find((entry) => entry.includes("upstream stream interrupted"));
+    assert.ok(diagnostic);
+    assert.match(diagnostic, /ECONNRESET/);
+    assert.match(diagnostic, /response\.created/);
+    assert.equal(diagnostic.includes("private upstream detail"), false);
+    assert.equal(diagnostic.includes("private prompt"), false);
+  } finally {
+    await proxy.close();
+  }
+});

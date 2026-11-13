@@ -130,16 +130,27 @@ export async function startGroqResponsesProxy({
       // an upstream error is delivered inside an HTTP 200 streaming response.
       loggerImpl.info("[groq responses proxy] request shape", JSON.stringify(groqRequestShape(payload)));
 
-      const upstream = await fetchImpl("https://api.groq.com/openai/v1/responses", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${apiKey}`,
-          "content-type": "application/json",
-          ...(request.headers.accept ? { accept: request.headers.accept } : {}),
-          ...(request.headers["groq-beta"] ? { "groq-beta": request.headers["groq-beta"] } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
+      const upstreamRequestStartedAt = Date.now();
+      let upstream;
+      try {
+        upstream = await fetchImpl("https://api.groq.com/openai/v1/responses", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${apiKey}`,
+            "content-type": "application/json",
+            ...(request.headers.accept ? { accept: request.headers.accept } : {}),
+            ...(request.headers["groq-beta"] ? { "groq-beta": request.headers["groq-beta"] } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        loggerImpl.warn("[groq responses proxy] upstream request failed", JSON.stringify({
+          durationMs: Date.now() - upstreamRequestStartedAt,
+          errorName: typeof error?.name === "string" ? error.name.slice(0, 80) : null,
+          errorCode: typeof error?.code === "string" ? error.code.slice(0, 80) : null,
+        }));
+        throw error;
+      }
       const streamStartedAt = Date.now();
       let streamedBytes = 0;
       let eventData = "";
@@ -187,10 +198,22 @@ export async function startGroqResponsesProxy({
         if (upstream.headers.has(name)) responseHeaders[name] = upstream.headers.get(name);
       response.writeHead(upstream.status, responseHeaders);
       if (upstream.body) {
-        for await (const chunk of upstream.body) {
-          streamedBytes += chunk.length;
-          inspectSseChunk(chunk);
-          if (!response.write(chunk)) await new Promise((resolve) => response.once("drain", resolve));
+        try {
+          for await (const chunk of upstream.body) {
+            streamedBytes += chunk.length;
+            inspectSseChunk(chunk);
+            if (!response.write(chunk)) await new Promise((resolve) => response.once("drain", resolve));
+          }
+        } catch (error) {
+          loggerImpl.warn("[groq responses proxy] upstream stream interrupted", JSON.stringify({
+            status: upstream.status,
+            durationMs: Date.now() - streamStartedAt,
+            streamedBytes,
+            eventCounts,
+            errorName: typeof error?.name === "string" ? error.name.slice(0, 80) : null,
+            errorCode: typeof error?.code === "string" ? error.code.slice(0, 80) : null,
+          }));
+          throw error;
         }
       }
       eventBuffer += eventDecoder.decode();
