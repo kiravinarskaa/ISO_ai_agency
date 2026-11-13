@@ -31,6 +31,22 @@ export function adaptGroqResponsesBody(body) {
     delete adapted.reasoning.summary;
     if (!Object.keys(adapted.reasoning).length) delete adapted.reasoning;
   }
+  // Groq's Responses API accepts function tools only. Codex also sends
+  // provider-native namespace and web_search tools that Groq rejects.
+  if (Array.isArray(adapted.tools)) {
+    adapted.tools = adapted.tools
+      .filter((tool) => tool && tool.type === "function")
+      .map((tool) => Object.fromEntries(
+        ["type", "name", "description", "parameters", "strict"]
+          .filter((field) => Object.hasOwn(tool, field))
+          .map((field) => [field, tool[field]]),
+      ));
+    if (!adapted.tools.length) {
+      delete adapted.tools;
+      delete adapted.tool_choice;
+      delete adapted.parallel_tool_calls;
+    }
+  }
   return adapted;
 }
 

@@ -40,6 +40,11 @@ test("Groq request adaptation removes documented unsupported fields only", () =>
     prompt_cache_options: { ttl: "1h" },
     text: { verbosity: "low", format: { type: "text" } },
     reasoning: { effort: "low", summary: "auto" },
+    tools: [
+      { type: "function", name: "read_file", description: "Read files", parameters: { type: "object" }, strict: true },
+      { type: "namespace", name: "local_tools", tools: [{ type: "function", name: "nested" }] },
+      { type: "web_search", external_web_access: true },
+    ],
     previous_response_id: "resp_test",
     prompt: { id: "reusable" },
     prompt_cache_key: "thread-test",
@@ -53,6 +58,9 @@ test("Groq request adaptation removes documented unsupported fields only", () =>
     input: "hello",
     reasoning: { effort: "low" },
     text: { format: { type: "text" } },
+    tools: [
+      { type: "function", name: "read_file", description: "Read files", parameters: { type: "object" }, strict: true },
+    ],
     custom: "preserved",
   });
   assert.equal(request.prompt_cache_key, "thread-test");
@@ -91,6 +99,11 @@ test("Groq Responses bridge authenticates locally, strips fields, and streams up
         client_metadata: { thread_id: "synthetic-thread" },
         prompt_cache_options: { ttl: "1h" },
         text: { verbosity: "low" },
+        tools: [
+          { type: "function", name: "read_file", description: "Read files", parameters: { type: "object" }, strict: true },
+          { type: "namespace", name: "local_tools", tools: [{ type: "function", name: "nested" }] },
+          { type: "web_search", external_web_access: true },
+        ],
         prompt_cache_key: "thread-test",
         include: ["reasoning.encrypted_content"],
       }),
@@ -99,7 +112,11 @@ test("Groq Responses bridge authenticates locally, strips fields, and streams up
     assert.match(response.text, /response\.completed/);
     assert.equal(forwarded.url, "https://api.groq.com/openai/v1/responses");
     assert.equal(forwarded.options.headers.authorization, "Bearer gsk-proxy-test-key");
-    assert.deepEqual(forwarded.body, { model: "openai/gpt-oss-20b", input: "hello" });
+    assert.deepEqual(forwarded.body, {
+      model: "openai/gpt-oss-20b",
+      input: "hello",
+      tools: [{ type: "function", name: "read_file", description: "Read files", parameters: { type: "object" }, strict: true }],
+    });
   } finally {
     await proxy.close();
   }
