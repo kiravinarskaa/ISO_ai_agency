@@ -16,6 +16,14 @@ Node.js, file-backed orchestration for the Client Manager's `client-intake` rout
 
 Codex CLI's supported non-interactive mode is `codex exec`; see [OpenAI Docs: Non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode). The installed Windows `.cmd` shim is launched through Node's shell mode, avoiding the PowerShell `.ps1` execution-policy shim. The orchestrator skips only the Git repository check because this shared workspace is not a Git repository; it does not relax the sandbox.
 
+### Local Ollama provider
+
+For local runs without OpenAI API usage, install and start Ollama on the same computer as this worker, download a supported model, then set `CODEX_PROVIDER=ollama` and `CODEX_MODEL=<ollama-model-tag>` before starting the worker. The command uses Codex CLI's `--oss --local-provider ollama` mode while preserving the same restricted workspace-write sandbox. Keep `CODEX_PROVIDER` unset (or set it to `openai`) for the normal API path. Ollama on a PC is not reachable by a Railway worker at `localhost`; run the worker locally for this mode. Local worker startup still needs its normal Google Sheets credentials if it will process the dashboard queue.
+
+### Groq hosted provider
+
+For a hosted model API, set `CODEX_PROVIDER=groq`, `CODEX_MODEL=openai/gpt-oss-20b` (or another model ID enabled for your Groq account), and `GROQ_API_KEY` in the worker environment. The launcher configures Codex CLI's custom provider to use Groq's Responses-compatible endpoint, passes the Groq key only to the child process, and retains the restricted workspace-write sandbox. For Railway, add these as service variables; do not put the key in source control. Groq free-tier limits apply, and a successful preflight confirms the provider can complete a small sandboxed write, not that an entire eight-agent run will fit within the quota.
+
 Before claiming a task, the worker runs a permission preflight through the same Codex command, cwd, `workspace-write` sandbox, and selected-project `--add-dir`. Codex writes and reads back a uniquely named canary under that project's `working` directory; the orchestrator removes it afterward. A failure releases the employee lease and moves the task to `blocked` without consuming an attempt, so a misconfigured cloud worker does not spend AI calls repeating the same failure. After correcting the environment, an operator can explicitly recover the task. Run preflight independently against a queued task with `node .\orchestrator.mjs preflight --task-id <task-id>`; this does not claim the task.
 
 ## Commands

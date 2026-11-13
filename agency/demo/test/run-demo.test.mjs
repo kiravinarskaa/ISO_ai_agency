@@ -383,6 +383,70 @@ test("live mock executes in dependency order and passes project-only write grant
   }
 });
 
+test("eight-agent runner selects Ollama while preserving workspace sandbox", async (t) => {
+  const f = fixture();
+  const previousProvider = process.env.CODEX_PROVIDER;
+  const previousModel = process.env.CODEX_MODEL;
+  t.after(() => {
+    if (previousProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = previousProvider;
+    if (previousModel === undefined) delete process.env.CODEX_MODEL;
+    else process.env.CODEX_MODEL = previousModel;
+    f.cleanup();
+  });
+  process.env.CODEX_PROVIDER = "ollama";
+  process.env.CODEX_MODEL = "gpt-oss:20b";
+  const seen = [];
+  await runDemo({
+    workspaceRoot: f.workspace,
+    projectId: "TEST-001",
+    executor: writingExecutor(f, { seen }),
+    preflight,
+    guard,
+  });
+  assert.deepEqual(seen[0].args.slice(0, 6), [
+    "exec", "--oss", "--local-provider", "ollama", "--model", "gpt-oss:20b",
+  ]);
+  assert.equal(seen[0].args[seen[0].args.indexOf("--sandbox") + 1], "workspace-write");
+});
+
+test("eight-agent runner configures Groq Responses API while preserving workspace sandbox", async (t) => {
+  const f = fixture();
+  const previousProvider = process.env.CODEX_PROVIDER;
+  const previousModel = process.env.CODEX_MODEL;
+  const previousGroqKey = process.env.GROQ_API_KEY;
+  t.after(() => {
+    if (previousProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = previousProvider;
+    if (previousModel === undefined) delete process.env.CODEX_MODEL;
+    else process.env.CODEX_MODEL = previousModel;
+    if (previousGroqKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousGroqKey;
+    f.cleanup();
+  });
+  process.env.CODEX_PROVIDER = "groq";
+  process.env.CODEX_MODEL = "openai/gpt-oss-20b";
+  process.env.GROQ_API_KEY = "gsk-test-worker-key";
+  const seen = [];
+  await runDemo({
+    workspaceRoot: f.workspace,
+    projectId: "TEST-001",
+    executor: writingExecutor(f, { seen }),
+    preflight,
+    guard,
+  });
+  assert.deepEqual(seen[0].args.slice(0, 11), [
+    "exec",
+    "-c", 'model_provider="groq"',
+    "-c", 'model_providers.groq.name="Groq"',
+    "-c", 'model_providers.groq.base_url="https://api.groq.com/openai/v1"',
+    "-c", 'model_providers.groq.env_key="GROQ_API_KEY"',
+    "-c", 'model_providers.groq.wire_api="responses"',
+  ]);
+  assert.equal(seen[0].args[seen[0].args.indexOf("--model") + 1], "openai/gpt-oss-20b");
+  assert.equal(seen[0].args[seen[0].args.indexOf("--sandbox") + 1], "workspace-write");
+});
+
 // Test goal: missing hard dependency blocks downstream specialist without invoking it. Assertions below define the exact expected result.
 test("missing hard dependency blocks downstream specialist without invoking it", async () => {
   const f = fixture();

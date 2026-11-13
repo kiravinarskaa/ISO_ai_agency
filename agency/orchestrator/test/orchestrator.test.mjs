@@ -671,6 +671,47 @@ test("Codex exec receives the configured OpenAI key as CODEX_API_KEY", async () 
   }
 });
 
+test("Codex subprocess receives the Groq key without mapping it to the OpenAI credential", async () => {
+  const f = fixture();
+  const originalGroqKey = process.env.GROQ_API_KEY;
+  const originalProvider = process.env.CODEX_PROVIDER;
+  const originalOpenAIKey = process.env.OPENAI_API_KEY;
+  const originalCodexKey = process.env.CODEX_API_KEY;
+  process.env.GROQ_API_KEY = "gsk-test-worker-key";
+  process.env.CODEX_PROVIDER = "groq";
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.CODEX_API_KEY;
+  try {
+    const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
+    let childEnv;
+    await spawnCodex(f.settings, task, {
+      invocation: codexInvocation(f.settings, task),
+      spawnImpl: (_command, _args, options) => {
+        childEnv = options.env;
+        const child = new EventEmitter();
+        child.pid = 1;
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        child.stdin = { end() {} };
+        process.nextTick(() => child.emit("close", 0, null));
+        return child;
+      },
+    });
+    assert.equal(childEnv.GROQ_API_KEY, "gsk-test-worker-key");
+    assert.equal(childEnv.CODEX_API_KEY, undefined);
+  } finally {
+    if (originalGroqKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = originalGroqKey;
+    if (originalProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = originalProvider;
+    if (originalOpenAIKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalOpenAIKey;
+    if (originalCodexKey === undefined) delete process.env.CODEX_API_KEY;
+    else process.env.CODEX_API_KEY = originalCodexKey;
+    f.cleanup();
+  }
+});
+
 test("Codex subprocess diagnostics distinguish startup failure, nonzero exit, and timeout without logging output secrets", async () => {
   const f = fixture();
   try {
@@ -1490,6 +1531,76 @@ test("Codex invocation is limited to the Client Manager and selected project roo
     );
     assert.equal(invocation.env.CLIENT_MANAGER_PROJECT_ID, "TEST-001");
   } finally {
+    f.cleanup();
+  }
+});
+
+test("Codex invocation selects the local Ollama provider when configured", () => {
+  const f = fixture();
+  const originalProvider = process.env.CODEX_PROVIDER;
+  const originalModel = process.env.CODEX_MODEL;
+  try {
+    process.env.CODEX_PROVIDER = "ollama";
+    process.env.CODEX_MODEL = "gpt-oss:20b";
+    const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
+    const invocation = codexInvocation(f.settings, task);
+    assert.deepEqual(invocation.args.slice(0, 6), [
+      "exec", "--oss", "--local-provider", "ollama", "--model", "gpt-oss:20b",
+    ]);
+    assert.equal(invocation.args.includes("--sandbox"), true);
+    assert.equal(invocation.args[invocation.args.indexOf("--sandbox") + 1], "workspace-write");
+  } finally {
+    if (originalProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = originalProvider;
+    if (originalModel === undefined) delete process.env.CODEX_MODEL;
+    else process.env.CODEX_MODEL = originalModel;
+    f.cleanup();
+  }
+});
+
+test("Codex invocation configures Groq Responses API and keeps workspace sandbox", () => {
+  const f = fixture();
+  const originalProvider = process.env.CODEX_PROVIDER;
+  const originalModel = process.env.CODEX_MODEL;
+  const originalGroqKey = process.env.GROQ_API_KEY;
+  try {
+    process.env.CODEX_PROVIDER = "groq";
+    process.env.CODEX_MODEL = "openai/gpt-oss-20b";
+    process.env.GROQ_API_KEY = "gsk-test-worker-key";
+    const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
+    const invocation = codexInvocation(f.settings, task);
+    assert.deepEqual(invocation.args.slice(0, 11), [
+      "exec",
+      "-c", 'model_provider="groq"',
+      "-c", 'model_providers.groq.name="Groq"',
+      "-c", 'model_providers.groq.base_url="https://api.groq.com/openai/v1"',
+      "-c", 'model_providers.groq.env_key="GROQ_API_KEY"',
+      "-c", 'model_providers.groq.wire_api="responses"',
+    ]);
+    assert.equal(invocation.args.includes("--model"), true);
+    assert.equal(invocation.args[invocation.args.indexOf("--model") + 1], "openai/gpt-oss-20b");
+    assert.equal(invocation.args[invocation.args.indexOf("--sandbox") + 1], "workspace-write");
+  } finally {
+    if (originalProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = originalProvider;
+    if (originalModel === undefined) delete process.env.CODEX_MODEL;
+    else process.env.CODEX_MODEL = originalModel;
+    if (originalGroqKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = originalGroqKey;
+    f.cleanup();
+  }
+});
+
+test("Codex invocation rejects unknown model providers", () => {
+  const f = fixture();
+  const originalProvider = process.env.CODEX_PROVIDER;
+  try {
+    process.env.CODEX_PROVIDER = "unknown-provider";
+    const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
+    assert.throws(() => codexInvocation(f.settings, task), { code: "MODEL_PROVIDER" });
+  } finally {
+    if (originalProvider === undefined) delete process.env.CODEX_PROVIDER;
+    else process.env.CODEX_PROVIDER = originalProvider;
     f.cleanup();
   }
 });

@@ -12,6 +12,10 @@ Supply an existing project ID. Dry runs inspect setup, dependencies, receipts an
 
 The runner uses Codex CLI workspace-write mode with the employee directory as working directory and the selected project as an additional write grant. It preserves user Codex configuration. It validates required inputs, installation receipts, guard eligibility, restricted-write preflight and output structures. Safe preflight diagnostics distinguish process startup, timeout, exit and readback failures without dumping model output.
 
+To run with a local Ollama model, start Ollama on this PC, pull a model supported by Codex CLI, and set `CODEX_PROVIDER=ollama` plus `CODEX_MODEL=<ollama-model-tag>` in the same terminal before running the demo. The runner selects Codex CLI's `--oss --local-provider ollama` mode and keeps the restricted workspace-write sandbox. Do not set this mode on Railway unless the Ollama service is reachable from that worker; Ollama on your PC is not reachable from Railway's `localhost`.
+
+To use Groq's hosted model API, set `CODEX_PROVIDER=groq`, `CODEX_MODEL=openai/gpt-oss-20b`, and `GROQ_API_KEY` before starting the worker or demo. The runner configures the custom Groq Responses API provider and preserves the workspace-write sandbox. Store `GROQ_API_KEY` as a Railway service variable for the deployed worker, never in a committed file. Provider quotas can block or delay a run; test preflight before processing queued work.
+
 Each attempt writes `logs/demo-runs/<run-id>/manifest.json` and per-employee records. `completed`, `reused-validated`, `blocked`, `failed` and dry-run results have distinct meanings. The current PM roster allows optional specialist paths to support blocker reports, but final overall completion still requires all eight accepted employee outputs.
 
 ## Word report

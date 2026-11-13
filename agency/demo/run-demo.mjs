@@ -342,10 +342,27 @@ function invocationFor(settings, employeeRoot, projectRoot, prompt) {
     throw new Error(
       "Refusing to use a Codex sandbox broader than workspace-write.",
     );
+  const provider = String(process.env.CODEX_PROVIDER || "openai").trim().toLowerCase();
+  if (!["openai", "ollama", "groq"].includes(provider))
+    throw Object.assign(new Error(`Unsupported CODEX_PROVIDER: ${provider}`), { code: "MODEL_PROVIDER" });
+  if (provider === "groq" && !process.env.GROQ_API_KEY)
+    throw Object.assign(new Error("GROQ_API_KEY is required when CODEX_PROVIDER=groq"), { code: "MODEL_PROVIDER" });
+  const groqConfig = provider === "groq"
+    ? [
+        "-c", 'model_provider="groq"',
+        "-c", 'model_providers.groq.name="Groq"',
+        "-c", 'model_providers.groq.base_url="https://api.groq.com/openai/v1"',
+        "-c", 'model_providers.groq.env_key="GROQ_API_KEY"',
+        "-c", 'model_providers.groq.wire_api="responses"',
+      ]
+    : [];
   return {
     command: settings.codex.command,
     args: [
       "exec",
+      ...(provider === "ollama" ? ["--oss", "--local-provider", "ollama"] : []),
+      ...groqConfig,
+      ...(process.env.CODEX_MODEL ? ["--model", process.env.CODEX_MODEL] : []),
       "--sandbox",
       "workspace-write",
       "--skip-git-repo-check",
@@ -357,7 +374,7 @@ function invocationFor(settings, employeeRoot, projectRoot, prompt) {
     ],
     cwd: employeeRoot,
     prompt,
-    env: {},
+    env: provider === "groq" ? { GROQ_API_KEY: process.env.GROQ_API_KEY } : {},
   };
 }
 /**

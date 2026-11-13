@@ -785,6 +785,7 @@ function buildPrompt(task, settings) {
 
 function childEnvironment(projectId) {
   // Start with a small allowlist so unrelated parent-process secrets are not inherited.
+  const selectedProvider = String(process.env.CODEX_PROVIDER || "openai").trim().toLowerCase();
   const allowed = [
     "PATH",
     "HOME",
@@ -808,6 +809,7 @@ function childEnvironment(projectId) {
   const env = {};
   // Preserve only environment variables needed to start the CLI and its Windows runtime.
   for (const key of allowed) {
+    if (key === "OPENAI_API_KEY" && selectedProvider === "groq") continue;
     const actual = Object.keys(process.env).find(
       (entry) => entry.toUpperCase() === key,
     );
@@ -818,7 +820,7 @@ function childEnvironment(projectId) {
   const openAiApiKey = Object.keys(process.env).find(
     (entry) => entry.toUpperCase() === "OPENAI_API_KEY",
   );
-  if (openAiApiKey) env.CODEX_API_KEY = process.env[openAiApiKey];
+  if (openAiApiKey && selectedProvider !== "groq") env.CODEX_API_KEY = process.env[openAiApiKey];
   env.CLIENT_MANAGER_PROJECT_ID = projectId;
   return env;
 }
@@ -830,10 +832,26 @@ export function codexInvocation(settings, task) {
   const projectRoot = projectRootFor(settings, task.projectId);
   if (settings.codex.sandbox !== "workspace-write")
     fail("Refusing to run Codex with a broader sandbox", "UNSAFE_SANDBOX");
+  const provider = String(process.env.CODEX_PROVIDER || "openai").trim().toLowerCase();
+  if (!["openai", "ollama", "groq"].includes(provider))
+    fail(`Unsupported CODEX_PROVIDER: ${provider}`, "MODEL_PROVIDER");
+  if (provider === "groq" && !process.env.GROQ_API_KEY)
+    fail("GROQ_API_KEY is required when CODEX_PROVIDER=groq", "MODEL_PROVIDER");
+  const groqConfig = provider === "groq"
+    ? [
+        "-c", 'model_provider="groq"',
+        "-c", 'model_providers.groq.name="Groq"',
+        "-c", 'model_providers.groq.base_url="https://api.groq.com/openai/v1"',
+        "-c", 'model_providers.groq.env_key="GROQ_API_KEY"',
+        "-c", 'model_providers.groq.wire_api="responses"',
+      ]
+    : [];
   return {
     command: settings.codex.command,
     args: [
       "exec",
+      ...(provider === "ollama" ? ["--oss", "--local-provider", "ollama"] : []),
+      ...groqConfig,
       ...(process.env.CODEX_MODEL ? ["--model", process.env.CODEX_MODEL] : []),
       "--sandbox",
       "workspace-write",
@@ -846,7 +864,10 @@ export function codexInvocation(settings, task) {
     ],
     cwd: employeeRoot,
     prompt: buildPrompt(task, settings),
-    env: { CLIENT_MANAGER_PROJECT_ID: task.projectId },
+    env: {
+      CLIENT_MANAGER_PROJECT_ID: task.projectId,
+      ...(provider === "groq" ? { GROQ_API_KEY: process.env.GROQ_API_KEY } : {}),
+    },
   };
 }
 
