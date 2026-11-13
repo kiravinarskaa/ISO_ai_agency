@@ -13,6 +13,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { startGroqResponsesProxy } from "./groq-responses-proxy.mjs";
 
 // Remember this module's absolute filename so the default workspace is independent
 // of the folder from which the user launches Node.js.
@@ -867,7 +868,6 @@ export function codexInvocation(settings, task) {
     prompt: buildPrompt(task, settings),
     env: {
       CLIENT_MANAGER_PROJECT_ID: task.projectId,
-      ...(provider === "groq" ? { GROQ_API_KEY: process.env.GROQ_API_KEY } : {}),
     },
   };
 }
@@ -888,11 +888,13 @@ export function sanitizeDiagnostic(value) {
 /** Describe common Codex CLI failures without logging its raw stderr. */
 function summarizeCodexStderr(stderr) {
   const text = String(stderr || "");
+  if (/invalid json body|failed to deserialize.*json body/i.test(text))
+    return "The provider rejected the request body sent by Codex.";
   if (/invalid[_ ]api[_ ]key|unauthorized|\b401\b/i.test(text))
     return "The configured model provider rejected the API credential.";
   if (/\b429\b|rate.?limit|too many requests/i.test(text))
     return "The configured model provider rate limited the request.";
-  if (/model.{0,40}(not found|unsupported|not available|no access)/i.test(text))
+  if (/\b(?:error|failed|unsupported)\b.{0,80}model.{0,40}(not found|unsupported|not available|no access)/i.test(text))
     return "The configured model is unavailable to this provider or API key.";
   if (/currently, only the default worker can be used/i.test(text))
     return "Codex reports that only its default worker is available.";
@@ -933,13 +935,44 @@ function safeCodexStderrExcerpt(stderr) {
  * that the command completed; artifact existence, schema/content validation,
  * and approved side effects are checked separately by the caller.
  */
-export function spawnCodex(
+export async function spawnCodex(
   settings,
   task,
-  { spawnImpl = spawn, invocation: suppliedInvocation } = {},
+  { spawnImpl = spawn, invocation: suppliedInvocation, groqProxyFactory = startGroqResponsesProxy } = {},
 ) {
   // Allow tests to inject a process launcher; normal runs use Node's child_process.spawn.
-  const invocation = suppliedInvocation || codexInvocation(settings, task);
+  let invocation = suppliedInvocation || codexInvocation(settings, task);
+  let groqProxy = null;
+  const provider = String(process.env.CODEX_PROVIDER || "openai").trim().toLowerCase();
+  if (provider === "groq" && (spawnImpl === spawn || groqProxyFactory !== startGroqResponsesProxy)) {
+    try {
+      groqProxy = await groqProxyFactory({ apiKey: process.env.GROQ_API_KEY });
+      const args = [...invocation.args];
+      const baseUrlIndex = args.findIndex((arg) => arg.startsWith("model_providers.groq.base_url="));
+      const envKeyIndex = args.findIndex((arg) => arg.startsWith("model_providers.groq.env_key="));
+      if (baseUrlIndex < 0 || envKeyIndex < 0)
+        throw new Error("Groq provider configuration is incomplete.");
+      args[baseUrlIndex] = `model_providers.groq.base_url="${groqProxy.baseUrl}"`;
+      args[envKeyIndex] = 'model_providers.groq.env_key="CODEX_GROQ_PROXY_TOKEN"';
+      const env = { ...invocation.env, CODEX_GROQ_PROXY_TOKEN: groqProxy.token };
+      delete env.GROQ_API_KEY;
+      invocation = { ...invocation, args, env };
+    } catch {
+      if (groqProxy) void groqProxy.close();
+      return {
+        ok: false,
+        code: "GROQ_PROXY_START",
+        spawnSucceeded: false,
+        exitCode: null,
+        signal: null,
+        stdoutBytes: 0,
+        stderrBytes: 0,
+        durationMs: 0,
+        timedOut: false,
+        error: "Unable to start the local Groq Responses compatibility bridge.",
+      };
+    }
+  }
   return new Promise((resolve) => {
     // Measure elapsed time with a monotonic clock that is not affected by wall-clock changes.
     const startedAt = process.hrtime.bigint();
@@ -974,6 +1007,7 @@ export function spawnCodex(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (groqProxy) void groqProxy.close();
       resolve({
         durationMs: Number(process.hrtime.bigint() - startedAt) / 1e6,
         timedOut,

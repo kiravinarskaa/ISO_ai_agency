@@ -671,7 +671,7 @@ test("Codex exec receives the configured OpenAI key as CODEX_API_KEY", async () 
   }
 });
 
-test("Codex subprocess receives the Groq key without mapping it to the OpenAI credential", async () => {
+test("Codex subprocess receives only a loopback Groq bridge token", async () => {
   const f = fixture();
   const originalGroqKey = process.env.GROQ_API_KEY;
   const originalProvider = process.env.CODEX_PROVIDER;
@@ -684,10 +684,17 @@ test("Codex subprocess receives the Groq key without mapping it to the OpenAI cr
   try {
     const { task } = enqueueTask(f.settings, { projectId: "TEST-001" });
     let childEnv;
+    let childArgs;
     await spawnCodex(f.settings, task, {
       invocation: codexInvocation(f.settings, task),
-      spawnImpl: (_command, _args, options) => {
+      groqProxyFactory: async () => ({
+        baseUrl: "http://127.0.0.1:45678/openai/v1",
+        token: "ephemeral-local-test-token",
+        close: async () => {},
+      }),
+      spawnImpl: (_command, args, options) => {
         childEnv = options.env;
+        childArgs = args;
         const child = new EventEmitter();
         child.pid = 1;
         child.stdout = new EventEmitter();
@@ -697,8 +704,11 @@ test("Codex subprocess receives the Groq key without mapping it to the OpenAI cr
         return child;
       },
     });
-    assert.equal(childEnv.GROQ_API_KEY, "gsk-test-worker-key");
+    assert.equal(childEnv.GROQ_API_KEY, undefined);
+    assert.equal(childEnv.CODEX_GROQ_PROXY_TOKEN, "ephemeral-local-test-token");
     assert.equal(childEnv.CODEX_API_KEY, undefined);
+    assert.ok(childArgs.includes('model_providers.groq.base_url="http://127.0.0.1:45678/openai/v1"'));
+    assert.ok(childArgs.includes('model_providers.groq.env_key="CODEX_GROQ_PROXY_TOKEN"'));
   } finally {
     if (originalGroqKey === undefined) delete process.env.GROQ_API_KEY;
     else process.env.GROQ_API_KEY = originalGroqKey;

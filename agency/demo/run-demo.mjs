@@ -375,7 +375,7 @@ function invocationFor(settings, employeeRoot, projectRoot, prompt) {
     ],
     cwd: employeeRoot,
     prompt,
-    env: provider === "groq" ? { GROQ_API_KEY: process.env.GROQ_API_KEY } : {},
+    env: {},
   };
 }
 /**
