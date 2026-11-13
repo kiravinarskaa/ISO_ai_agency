@@ -3,6 +3,7 @@ import test from "node:test";
 import { request as httpRequest } from "node:http";
 import {
   adaptGroqResponsesBody,
+  groqRequestShape,
   startGroqResponsesProxy,
 } from "../groq-responses-proxy.mjs";
 
@@ -38,6 +39,7 @@ test("Groq request adaptation removes documented unsupported fields only", () =>
     client_metadata: { thread_id: "synthetic-thread" },
     prompt_cache_options: { ttl: "1h" },
     text: { verbosity: "low", format: { type: "text" } },
+    reasoning: { effort: "low", summary: "auto" },
     previous_response_id: "resp_test",
     prompt: { id: "reusable" },
     prompt_cache_key: "thread-test",
@@ -101,4 +103,20 @@ test("Groq Responses bridge authenticates locally, strips fields, and streams up
   } finally {
     await proxy.close();
   }
+});
+
+test("rejected-request diagnostics expose request shape without prompt or tool content", () => {
+  const shape = groqRequestShape({
+    model: "openai/gpt-oss-20b",
+    input: [{ type: "message", role: "user", content: [{ type: "input_text", text: "private prompt" }] }],
+    tools: [{ type: "function", name: "private tool", description: "private description", parameters: { secret: true } }],
+  });
+  assert.deepEqual(shape.topLevelFields, ["input", "model", "tools"]);
+  assert.deepEqual(shape.inputItems, [{
+    type: "message",
+    fields: ["content", "role", "type"],
+    contentKinds: [{ type: "input_text", fields: ["text", "type"] }],
+  }]);
+  assert.deepEqual(shape.tools, [{ type: "function", fields: ["description", "name", "parameters", "type"], functionFields: [] }]);
+  assert.equal(JSON.stringify(shape).includes("private"), false);
 });

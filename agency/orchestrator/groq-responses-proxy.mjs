@@ -26,7 +26,41 @@ export function adaptGroqResponsesBody(body) {
     delete adapted.text.verbosity;
     if (!Object.keys(adapted.text).length) delete adapted.text;
   }
+  if (adapted.reasoning && typeof adapted.reasoning === "object" && !Array.isArray(adapted.reasoning)) {
+    adapted.reasoning = { ...adapted.reasoning };
+    delete adapted.reasoning.summary;
+    if (!Object.keys(adapted.reasoning).length) delete adapted.reasoning;
+  }
   return adapted;
+}
+
+/** Describe a rejected payload without exposing prompt, argument, or tool content. */
+export function groqRequestShape(body) {
+  const inputItems = Array.isArray(body?.input) ? body.input : [];
+  const tools = Array.isArray(body?.tools) ? body.tools : [];
+  return {
+    topLevelFields: Object.keys(body || {}).sort(),
+    inputKind: Array.isArray(body?.input) ? "array" : typeof body?.input,
+    inputItems: inputItems.slice(0, 40).map((item) => ({
+      type: typeof item?.type === "string" ? item.type : null,
+      fields: Object.keys(item || {}).sort(),
+      contentKinds: Array.isArray(item?.content)
+        ? item.content.slice(0, 20).map((content) => ({
+            type: typeof content?.type === "string" ? content.type : null,
+            fields: Object.keys(content || {}).sort(),
+          }))
+        : [],
+    })),
+    textFields: Object.keys(body?.text || {}).sort(),
+    textFormatFields: Object.keys(body?.text?.format || {}).sort(),
+    reasoningFields: Object.keys(body?.reasoning || {}).sort(),
+    toolCount: tools.length,
+    tools: tools.slice(0, 40).map((tool) => ({
+      type: typeof tool?.type === "string" ? tool.type : null,
+      fields: Object.keys(tool || {}).sort(),
+      functionFields: Object.keys(tool?.function || {}).sort(),
+    })),
+  };
 }
 
 /**
@@ -85,6 +119,12 @@ export async function startGroqResponsesProxy({
         },
         body: JSON.stringify(payload),
       });
+      if (upstream.status >= 400) {
+        console.warn("[groq responses proxy] upstream rejected request", JSON.stringify({
+          status: upstream.status,
+          shape: groqRequestShape(payload),
+        }));
+      }
       const responseHeaders = {};
       for (const name of ["content-type", "cache-control", "retry-after", "x-request-id"])
         if (upstream.headers.has(name)) responseHeaders[name] = upstream.headers.get(name);
