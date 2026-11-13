@@ -87,6 +87,7 @@ export function groqRequestShape(body) {
 export async function startGroqResponsesProxy({
   apiKey,
   fetchImpl = fetch,
+  loggerImpl = console,
   maxRequestBytes = 32 * 1024 * 1024,
 } = {}) {
   if (typeof apiKey !== "string" || !apiKey.trim())
@@ -127,7 +128,7 @@ export async function startGroqResponsesProxy({
 
       // This field-only trace makes provider compatibility diagnosable even when
       // an upstream error is delivered inside an HTTP 200 streaming response.
-      console.info("[groq responses proxy] request shape", JSON.stringify(groqRequestShape(payload)));
+      loggerImpl.info("[groq responses proxy] request shape", JSON.stringify(groqRequestShape(payload)));
 
       const upstream = await fetchImpl("https://api.groq.com/openai/v1/responses", {
         method: "POST",
@@ -139,8 +140,44 @@ export async function startGroqResponsesProxy({
         },
         body: JSON.stringify(payload),
       });
+      const streamStartedAt = Date.now();
+      let streamedBytes = 0;
+      let eventData = "";
+      let eventLine = "";
+      let eventBuffer = "";
+      const eventDecoder = new TextDecoder();
+      let doneMarker = false;
+      const eventCounts = Object.create(null);
+      const recordEvent = () => {
+        if (!eventData && !eventLine) return;
+        let type = eventLine || "message";
+        let errorType = null;
+        try {
+          const parsed = JSON.parse(eventData);
+          if (typeof parsed?.type === "string") type = parsed.type;
+          if (typeof parsed?.error?.type === "string") errorType = parsed.error.type;
+          if (eventData === "[DONE]") doneMarker = true;
+        } catch {
+          if (eventData === "[DONE]") doneMarker = true;
+        }
+        eventCounts[type] = (eventCounts[type] || 0) + 1;
+        if (errorType) eventCounts[`error:${errorType}`] = (eventCounts[`error:${errorType}`] || 0) + 1;
+        eventLine = "";
+        eventData = "";
+      };
+      const inspectSseChunk = (chunk) => {
+        eventBuffer += eventDecoder.decode(chunk, { stream: true });
+        let newline;
+        while ((newline = eventBuffer.indexOf("\n")) >= 0) {
+          const line = eventBuffer.slice(0, newline).replace(/\r$/, "");
+          eventBuffer = eventBuffer.slice(newline + 1);
+          if (!line) recordEvent();
+          else if (line.startsWith("event:")) eventLine = line.slice(6).trim().slice(0, 100);
+          else if (line.startsWith("data:")) eventData += line.slice(5).trim();
+        }
+      };
       if (upstream.status >= 400) {
-        console.warn("[groq responses proxy] upstream rejected request", JSON.stringify({
+        loggerImpl.warn("[groq responses proxy] upstream rejected request", JSON.stringify({
           status: upstream.status,
           shape: groqRequestShape(payload),
         }));
@@ -151,9 +188,26 @@ export async function startGroqResponsesProxy({
       response.writeHead(upstream.status, responseHeaders);
       if (upstream.body) {
         for await (const chunk of upstream.body) {
+          streamedBytes += chunk.length;
+          inspectSseChunk(chunk);
           if (!response.write(chunk)) await new Promise((resolve) => response.once("drain", resolve));
         }
       }
+      eventBuffer += eventDecoder.decode();
+      if (eventBuffer) {
+        const line = eventBuffer.replace(/\r$/, "");
+        if (line.startsWith("event:")) eventLine = line.slice(6).trim().slice(0, 100);
+        else if (line.startsWith("data:")) eventData += line.slice(5).trim();
+      }
+      if (eventBuffer || eventData || eventLine) recordEvent();
+      loggerImpl.info("[groq responses proxy] upstream stream ended", JSON.stringify({
+        status: upstream.status,
+        contentType: upstream.headers.get("content-type") || null,
+        durationMs: Date.now() - streamStartedAt,
+        streamedBytes,
+        eventCounts,
+        doneMarker,
+      }));
       response.end();
     } catch {
       if (!response.headersSent) {

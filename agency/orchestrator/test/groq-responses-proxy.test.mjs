@@ -68,11 +68,13 @@ test("Groq request adaptation removes documented unsupported fields only", () =>
 
 test("Groq Responses bridge authenticates locally, strips fields, and streams upstream", async () => {
   let forwarded;
+  const logs = [];
   const proxy = await startGroqResponsesProxy({
     apiKey: "gsk-proxy-test-key",
+    loggerImpl: { info: (...args) => logs.push(args.join(" ")), warn: (...args) => logs.push(args.join(" ")) },
     fetchImpl: async (url, options) => {
       forwarded = { url, options, body: JSON.parse(options.body) };
-      return new Response("data: {\"type\":\"response.completed\"}\n\n", {
+      return new Response('event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"private response"}\n\nevent: response.completed\ndata: {"type":"response.completed"}\n\n', {
         status: 200,
         headers: { "content-type": "text/event-stream", "x-request-id": "req-test" },
       });
@@ -112,6 +114,11 @@ test("Groq Responses bridge authenticates locally, strips fields, and streams up
     assert.match(response.text, /response\.completed/);
     assert.equal(forwarded.url, "https://api.groq.com/openai/v1/responses");
     assert.equal(forwarded.options.headers.authorization, "Bearer gsk-proxy-test-key");
+    const streamLog = logs.find((entry) => entry.includes("upstream stream ended"));
+    assert.ok(streamLog);
+    assert.match(streamLog, /response\.output_text\.delta/);
+    assert.match(streamLog, /response\.completed/);
+    assert.equal(streamLog.includes("private response"), false);
     assert.deepEqual(forwarded.body, {
       model: "openai/gpt-oss-20b",
       input: "hello",
