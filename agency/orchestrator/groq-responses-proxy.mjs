@@ -2,9 +2,12 @@ import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 
 export const GROQ_RESPONSES_UNSUPPORTED_FIELDS = Object.freeze([
+  "client_metadata",
   "include",
   "previous_response_id",
+  "prompt_cache_options",
   "store",
+  "stream_options",
   "prompt",
   "prompt_cache_key",
   "safety_identifier",
@@ -17,6 +20,12 @@ export function adaptGroqResponsesBody(body) {
     throw new TypeError("Codex Responses request must be a JSON object.");
   const adapted = { ...body };
   for (const field of GROQ_RESPONSES_UNSUPPORTED_FIELDS) delete adapted[field];
+  // Codex sends verbosity controls that Groq's Responses request schema omits.
+  if (adapted.text && typeof adapted.text === "object" && !Array.isArray(adapted.text)) {
+    adapted.text = { ...adapted.text };
+    delete adapted.text.verbosity;
+    if (!Object.keys(adapted.text).length) delete adapted.text;
+  }
   return adapted;
 }
 
