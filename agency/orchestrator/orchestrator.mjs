@@ -888,11 +888,11 @@ export function sanitizeDiagnostic(value) {
 function summarizeCodexStderr(stderr) {
   const text = String(stderr || "");
   if (/invalid[_ ]api[_ ]key|unauthorized|\b401\b/i.test(text))
-    return "OpenAI rejected the API credential.";
+    return "The configured model provider rejected the API credential.";
   if (/\b429\b|rate.?limit|too many requests/i.test(text))
-    return "OpenAI rate limited the Codex request.";
+    return "The configured model provider rate limited the request.";
   if (/model.{0,40}(not found|unsupported|not available|no access)/i.test(text))
-    return "The configured Codex model is unavailable to this API key.";
+    return "The configured model is unavailable to this provider or API key.";
   if (/currently, only the default worker can be used/i.test(text))
     return "Codex reports that only its default worker is available.";
   if (/bubblewrap|\bbwrap\b|unshare|sandbox.{0,40}(failed|denied|unsupported)|operation not permitted/i.test(text))

@@ -421,6 +421,9 @@ export async function restrictedPreflight(
   }
   if (!result.ok || !readback) {
     const diagnostic = {
+      failureCode: result.code || null,
+      stderrSummary: result.stderrSummary || null,
+      stderrBytes: Number.isFinite(result.stderrBytes) ? result.stderrBytes : null,
       spawnSucceeded: result.spawnSucceeded ?? null,
       exitCode: result.exitCode ?? null,
       timedOut: result.timedOut === true,
