@@ -1,5 +1,6 @@
 // This file only handles the page. The server owns passwords, Google access,
 // task validation, and chat answers based on the task ledger.
+import { scopedTasks, employeeWork } from "./run-model.js";
 const EMPLOYEES = [
   { id: "client-manager", name: "Client Manager" },
   { id: "isms-readiness-planner", name: "ISMS Readiness Planner" },
@@ -12,7 +13,8 @@ const EMPLOYEES = [
 ];
 const STATUSES = ["Queued", "In Progress", "Blocked", "Completed"];
 const PRIORITIES = ["Low", "Normal", "High", "Urgent"];
-const state = { tasks: [], conversationId: getConversationId("pm"), refreshing: false };
+const state = { tasks: [], runs: [], view: "current", runKey: "", archiveAvailable: false,
+  selectedRuns: new Set(), pendingArchive: null, conversationId: getConversationId("pm"), refreshing: false };
 const $ = (selector) => document.querySelector(selector);
 
 function updateRunModeForm() {
@@ -122,14 +124,15 @@ function completedOn(task, day) {
 }
 
 function renderMetrics() {
-  $("#count-queued").textContent = state.tasks.filter((task) => task.status === "Queued").length;
-  const inProgress = state.tasks.filter((task) => task.status === "In Progress");
+  const tasks = contextTasks();
+  $("#count-queued").textContent = tasks.filter((task) => task.status === "Queued").length;
+  const inProgress = tasks.filter((task) => task.status === "In Progress");
   const staleProgress = inProgress.filter((task) => task.staleProgress);
   $("#count-progress").textContent = inProgress.length - staleProgress.length;
   $("#progress-note").textContent = staleProgress.length
     ? staleProgress.length + " stale In Progress status(es)" : "Updated within 2 hours";
-  $("#count-blocked").textContent = state.tasks.filter((task) => task.status === "Blocked").length;
-  $("#count-completed").textContent = state.tasks.filter((task) => completedOn(task, localToday())).length;
+  $("#count-blocked").textContent = tasks.filter((task) => task.status === "Blocked").length;
+  $("#count-completed").textContent = tasks.filter((task) => completedOn(task, localToday())).length;
   $("#today-label").textContent = new Intl.DateTimeFormat("en", {
     dateStyle: "full", timeZone: "Asia/Tashkent",
   }).format(new Date());
@@ -140,18 +143,16 @@ function renderMetrics() {
 
 function renderEmployees() {
   const today = localToday();
+  const tasks = contextTasks();
   $("#employee-cards").innerHTML = EMPLOYEES.map((employee) => {
-    const theirTasks = state.tasks.filter((task) => task.employeeId === employee.id);
-    const active = theirTasks.find((task) => task.status === "In Progress" && !task.staleProgress);
-    const stale = theirTasks.find((task) => task.status === "In Progress" && task.staleProgress);
-    const next = theirTasks.find((task) => task.status === "Queued");
-    const blocked = theirTasks.find((task) => task.status === "Blocked");
+    const theirTasks = tasks.filter((task) => task.employeeId === employee.id);
+    const { active, stale, next, blocked } = employeeWork(tasks, employee.id);
     const completed = theirTasks.filter((task) => completedOn(task, today)).length;
     const status = active ? "Recent update" : stale ? "Stale" : blocked ? "Blocked" : "Idle";
     const statusClass = active ? "in-progress" : stale ? "stale" : blocked ? "blocked" : "idle";
     const currentLabel = active
       ? "Recently updated on: " + active.title
-      : stale ? "No recent update: " + stale.title + " · " + formatDate(stale.updatedAt || stale.timestamp)
+      : stale ? "No recent update: " + stale.title + " � " + formatDate(stale.updatedAt || stale.timestamp)
       : blocked ? "Blocked on: " + blocked.title
       : next ? "Next in queue: " + next.title : "No open task assigned";
     return '<article class="employee-card">' +
@@ -167,7 +168,7 @@ function visibleTasks() {
   const status = $("#filter-status").value;
   const priority = $("#filter-priority").value;
   const date = $("#filter-date").value;
-  return state.tasks.filter((task) => {
+  return contextTasks().filter((task) => {
     if (agent && task.employeeId !== agent) return false;
     if (status && task.status !== status) return false;
     if (priority && task.priority !== priority) return false;
@@ -194,10 +195,11 @@ function safeWebLink(value) {
 function renderTasks() {
   const tasks = visibleTasks();
   if (!tasks.length) {
-    $("#task-list").innerHTML = '<div class="empty-state">No tasks match these filters. Assign a task to begin.</div>';
+    $("#task-list").innerHTML = '<div class="empty-state">No tasks in this view match your filters.</div>';
     return;
   }
   $("#task-list").innerHTML = tasks.map((task) => {
+    const editable = !task.historical && !task.taskId.startsWith("workflow:");
     const statusOptions = STATUSES.map((status) =>
       '<option ' + (status === task.status ? "selected" : "") + ">" + status + "</option>",
     ).join("");
@@ -216,13 +218,13 @@ function renderTasks() {
       (task.staleProgress ? ' <span class="status-pill stale">No update &gt;2h</span>' : "") +
       "</div></div>" +
       '<p class="task-description">' + escapeHtml(task.description) + "</p>" +
-      '<div class="task-actions"><label>Status<select class="task-status">' + statusOptions +
+      (editable ? '<div class="task-actions"><label>Status<select class="task-status">' + statusOptions +
       '</select></label><label>Blocker reason<input class="task-blocker" value="' +
       escapeAttribute(task.blockerReason) + '" placeholder="Add a reason if blocked"></label>' +
       '<label>Output link<input class="task-result" type="url" value="' +
-      escapeAttribute(task.resultLink) + '" placeholder="https://…"></label>' +
+      escapeAttribute(task.resultLink) + '" placeholder="https://:"></label>' +
       '<button class="button secondary save-task" type="button">Save update</button>' + link +
-      "</div></article>";
+      "</div>" : '<div class="task-actions"><span class="muted">Read-only ' + (task.historical ? "history" : "execution ledger") + '</span>' + link + "</div>") + "</article>";
   }).join("");
 }
 
@@ -232,10 +234,11 @@ function minutesBetween(start, end) {
 }
 
 function renderReports() {
+  const tasks = contextTasks();
   const today = localToday();
   const week = mondayOfThisWeek();
-  const daily = state.tasks.filter((task) => completedOn(task, today));
-  const weekly = state.tasks.filter((task) =>
+  const daily = tasks.filter((task) => completedOn(task, today));
+  const weekly = tasks.filter((task) =>
     task.status === "Completed" && task.completionTime &&
     taskDateKey(task.completionTime) >= week,
   );
@@ -248,10 +251,10 @@ function renderReports() {
     '<div class="report-line"><span>Completed today</span><strong>' + daily.length + "</strong></div>" +
     '<div class="report-line"><span>Completed this week</span><strong>' + weekly.length + "</strong></div>" +
     '<div class="report-line"><span>Open tasks</span><strong>' +
-    state.tasks.filter((task) => task.status === "Queued" || task.status === "In Progress").length +
+    tasks.filter((task) => task.status === "Queued" || task.status === "In Progress").length +
     "</strong></div>" +
     '<div class="report-line"><span>Blocked tasks</span><strong>' +
-    state.tasks.filter((task) => task.status === "Blocked").length + "</strong></div>" +
+    tasks.filter((task) => task.status === "Blocked").length + "</strong></div>" +
     '<div class="report-line"><span>Average time from assignment to completion</span><strong>' +
     (average === null ? "Not enough data" : average + " min") + "</strong></div>";
 
@@ -274,7 +277,7 @@ function renderChat(messages) {
     const speaker = isBoss ? "You" :
       (message.speaker === "project-manager" ? "Project Manager" : employeeName(message.employeeId));
     return '<div class="chat-bubble ' + (isBoss ? "boss" : "") + '">' +
-      "<small>" + escapeHtml(speaker) + " · " + escapeHtml(formatDate(message.timestamp)) +
+      "<small>" + escapeHtml(speaker) + " � " + escapeHtml(formatDate(message.timestamp)) +
       "</small>" + escapeHtml(message.message) + "</div>";
   }).join("");
   history.scrollTop = history.scrollHeight;
@@ -291,7 +294,7 @@ function escapeAttribute(value) {
 }
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("en", {
@@ -299,7 +302,112 @@ function formatDate(value) {
   }).format(date);
 }
 
+function contextTasks() {
+  return scopedTasks(state.tasks, state.view, state.runKey);
+}
+
+function viewRuns() {
+  return state.runs.filter(run => state.view === "history" ? run.historical : !run.historical);
+}
+
+function renderSelection() {
+  const selected = state.runs.filter(run => state.selectedRuns.has(run.key));
+  $("#selected-run-count").textContent = selected.length ? selected.length + " run(s) selected" : "No runs selected";
+  $("#archive-runs").disabled = !state.archiveAvailable || !selected.some(run => run.canArchive);
+  $("#restore-runs").disabled = !state.archiveAvailable || !selected.some(run => run.archived);
+}
+
+function renderRunControls() {
+  const runs = viewRuns();
+  if (state.runKey && !runs.some(run => run.key === state.runKey)) state.runKey = "";
+  $("#view-current").setAttribute("aria-pressed", state.view === "current");
+  $("#view-history").setAttribute("aria-pressed", state.view === "history");
+  $("#snapshot-label").textContent = state.view === "history" ? "RUN HISTORY" : "CURRENT WORK";
+  $("#tasks-heading").textContent = state.view === "history" ? "Historical tasks" : "Current tasks";
+  $("#employee-scope-label").textContent = state.view === "history" ? "Historical statuses for this selection" : "Status comes from current tasks";
+  $("#scope-description").textContent = state.view === "history"
+    ? "Previous runs and archived work. Records are read-only here. Metrics, employee cards and exports use this selection."
+    : "Latest run for each project, plus all queued or running work. Metrics, employee cards and exports use this selection.";
+  $("#filter-run").innerHTML = '<option value="">All ' + state.view + ' runs</option>' + runs.map(run =>
+    '<option value="' + escapeAttribute(run.key) + '">' + escapeHtml((run.projectId || run.label) + " � " + formatDate(run.updatedAt) + (run.archived ? " � Archived" : "")) + '</option>').join("");
+  $("#filter-run").value = state.runKey;
+  const listed = runs.filter(run => !state.runKey || run.key === state.runKey);
+  const eligibleKeys = new Set(listed.filter(run => !run.pending).map(run => run.key));
+  state.selectedRuns = new Set([...state.selectedRuns].filter(key => eligibleKeys.has(key)));
+  $("#run-count").textContent = "(" + listed.length + ")";
+  $("#select-eligible").disabled = !state.archiveAvailable || !listed.some(run => !run.pending);
+  $("#select-eligible").textContent = state.view === "history" ? "Select archived runs" : "Select eligible runs";
+  $("#run-list").innerHTML = listed.length ? listed.map(run =>
+    '<label class="run-row"><input type="checkbox" class="run-select" value="' + escapeAttribute(run.key) + '" ' +
+    (state.selectedRuns.has(run.key) ? "checked " : "") + (run.pending || !state.archiveAvailable ? "disabled " : "") + '>' +
+    '<span><strong>' + escapeHtml(run.projectId || run.label) + '</strong><small>' + escapeHtml(run.label) + ' � ' +
+    escapeHtml(formatDate(run.updatedAt)) + '</small><small>' + run.taskCount + ' tasks � ' + run.completedCount + ' completed � ' + run.blockedCount + ' blocked</small></span>' +
+    '<span class="status-pill ' + (run.pending ? "in-progress" : "idle") + '">' + (run.pending ? "Queued / running" : run.archived ? "Archived" : "Recorded") + '</span></label>').join("")
+    : '<p class="empty-state">No runs in this view.</p>';
+  renderSelection();
+}
+
+function changeView(view) {
+  state.view = view;
+  state.runKey = "";
+  state.selectedRuns.clear();
+  renderAll();
+}
+
+function previewArchive(action) {
+  const runs = state.runs.filter(run => state.selectedRuns.has(run.key) && (action === "archive" ? run.canArchive : run.archived));
+  if (!runs.length) return;
+  state.pendingArchive = { action, runKeys: runs.map(run => run.key) };
+  $("#archive-dialog-title").textContent = action === "archive" ? "Archive selected runs?" : "Unarchive selected runs?";
+  $("#archive-preview").textContent = runs.length + " run(s), containing " + runs.reduce((sum, run) => sum + run.taskCount, 0) + " task records. " +
+    (action === "archive" ? "They will remain available in History." : "Archive flags will be removed. Older runs of the same project still remain in History.");
+  $("#archive-preview-runs").innerHTML = runs.map(run => '<li>' + escapeHtml(run.projectId || run.label) + ' � ' + escapeHtml(formatDate(run.updatedAt)) + '</li>').join("");
+  $("#archive-dialog-error").textContent = "";
+  $("#archive-confirm").textContent = action === "archive" ? "Archive runs" : "Unarchive runs";
+  $("#archive-dialog").showModal();
+}
+
+$("#view-current").addEventListener("click", () => changeView("current"));
+$("#view-history").addEventListener("click", () => changeView("history"));
+$("#filter-run").addEventListener("change", event => { state.runKey = event.target.value; state.selectedRuns.clear(); renderAll(); });
+$("#refresh-now").addEventListener("click", loadTasks);
+$("#run-list").addEventListener("change", event => {
+  if (!event.target.matches(".run-select")) return;
+  if (event.target.checked && state.selectedRuns.size >= 100) { event.target.checked = false; $("#archive-message").textContent = "Select at most 100 runs per change."; return; }
+  if (event.target.checked) state.selectedRuns.add(event.target.value);
+  else state.selectedRuns.delete(event.target.value);
+  renderSelection();
+});
+$("#select-eligible").addEventListener("click", () => {
+  state.selectedRuns = new Set(viewRuns().filter(run => (!state.runKey || run.key === state.runKey) &&
+    (state.view === "history" ? run.archived : run.canArchive)).slice(0, 100).map(run => run.key));
+  renderRunControls();
+});
+$("#archive-runs").addEventListener("click", () => previewArchive("archive"));
+$("#restore-runs").addEventListener("click", () => previewArchive("restore"));
+$("#archive-cancel").addEventListener("click", () => $("#archive-dialog").close());
+$("#archive-dialog").addEventListener("close", () => { state.pendingArchive = null; });
+$("#archive-confirm").addEventListener("click", async () => {
+  if (!state.pendingArchive) return;
+  const change = state.pendingArchive;
+  $("#archive-confirm").disabled = true;
+  $("#archive-cancel").disabled = true;
+  try {
+    const result = await api("/api/runs/archive", { method: "POST", body: JSON.stringify(change) });
+    $("#archive-dialog").close();
+    state.selectedRuns.clear();
+    $("#archive-message").textContent = result.changed + " run(s) " + (change.action === "archive" ? "archived. Open History to restore them." : "unarchived.");
+    await loadTasks();
+  } catch (error) {
+    $("#archive-dialog-error").textContent = error.message;
+  } finally {
+    $("#archive-confirm").disabled = false;
+    $("#archive-cancel").disabled = false;
+  }
+});
+
 function renderAll() {
+  renderRunControls();
   renderMetrics();
   renderEmployees();
   renderTasks();
@@ -309,16 +417,19 @@ function renderAll() {
 async function loadTasks() {
   if (state.refreshing) return;
   state.refreshing = true;
+  $("#refresh-now").disabled = true;
   try {
     const result = await api("/api/tasks");
     state.tasks = result.tasks || [];
+    state.runs = result.runs || [];
+    state.archiveAvailable = result.archiveAvailable === true;
     if (result.connected) {
       $("#connection-label").textContent = "Connected to Google Sheet";
       $(".connection-dot").classList.add("connected");
       setSheetAvailable(true);
-      showNotice("");
+      showNotice(result.warning || "", "warning");
     } else {
-      $("#connection-label").textContent = "Sheet not connected · showing an empty dashboard";
+      $("#connection-label").textContent = "Sheet not connected � showing an empty dashboard";
       $(".connection-dot").classList.remove("connected");
       setSheetAvailable(false);
       showNotice(result.warning || "Google Sheet is not connected. Showing an empty dashboard.", "warning");
@@ -329,7 +440,9 @@ async function loadTasks() {
     else {
       // Keep the dashboard available even when the task service is unavailable.
       state.tasks = [];
-      $("#connection-label").textContent = "Sheet unavailable · showing an empty dashboard";
+      state.runs = [];
+      state.archiveAvailable = false;
+      $("#connection-label").textContent = "Sheet unavailable � showing an empty dashboard";
       $(".connection-dot").classList.remove("connected");
       setSheetAvailable(false);
       showNotice(error.message + " The dashboard is still available with no task data.", "warning");
@@ -337,6 +450,7 @@ async function loadTasks() {
     }
   } finally {
     state.refreshing = false;
+    $("#refresh-now").disabled = false;
   }
 }
 
@@ -362,6 +476,7 @@ function downloadCsv() {
     ["Task Description", "description"], ["Priority", "priority"], ["Status", "status"],
     ["Output / Result Link", "resultLink"], ["Completion Time", "completionTime"],
     ["Deadline", "deadline"], ["Blocker Reason", "blockerReason"],
+    ["Run", "runKey"], ["Archived", "archived"],
   ];
   const csvCell = (value) => '"' + String(value ?? "").replaceAll('"', '""') + '"';
   const lines = [fields.map(([header]) => csvCell(header)).join(",")];
@@ -401,7 +516,7 @@ $("#task-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const message = $("#task-form-message");
-  message.textContent = "Saving task…";
+  message.textContent = "Saving task:";
   message.classList.remove("error");
   const formData = new FormData(form);
   try {
@@ -420,7 +535,7 @@ $("#task-form").addEventListener("submit", async (event) => {
           : "",
       }),
     });
-    state.tasks.unshift(result.task);
+    await loadTasks();
     form.reset();
     updateRunModeForm();
     renderAll();
@@ -442,7 +557,7 @@ $("#task-list").addEventListener("click", async (event) => {
   const card = button.closest("[data-task-id]");
   const taskId = card.dataset.taskId;
   button.disabled = true;
-  button.textContent = "Saving…";
+  button.textContent = "Saving:";
   try {
     await api("/api/tasks/" + encodeURIComponent(taskId), {
       method: "PATCH",
@@ -474,6 +589,8 @@ $("#chat-form").addEventListener("submit", async (event) => {
         conversationId: state.conversationId,
         employeeId: $("#chat-employee").value,
         message,
+        view: state.view,
+        runKey: state.runKey,
       }),
     });
     input.value = "";
@@ -502,6 +619,12 @@ $("#jump-to-assign").addEventListener("click", () => {
 populateEmployeeSelects();
 api("/api/tasks").then(async (result) => {
   state.tasks = result.tasks;
+  state.runs = result.runs || [];
+  state.archiveAvailable = result.archiveAvailable === true;
+  setSheetAvailable(result.connected === true);
+  $("#connection-label").textContent = result.connected ? "Connected to Google Sheet" : "Sheet not connected";
+  $(".connection-dot").classList.toggle("connected", result.connected === true);
+  showNotice(result.warning || "", "warning");
   setPage("dashboard");
   renderAll();
   await loadChat();
@@ -514,7 +637,7 @@ api("/api/tasks").then(async (result) => {
   // A saved session can still open the dashboard if a data request fails.
   state.tasks = [];
   setPage("dashboard");
-  $("#connection-label").textContent = "Sheet unavailable · showing an empty dashboard";
+  $("#connection-label").textContent = "Sheet unavailable � showing an empty dashboard";
   $(".connection-dot").classList.remove("connected");
   setSheetAvailable(false);
   showNotice(error.message + " The dashboard is still available with no task data.", "warning");

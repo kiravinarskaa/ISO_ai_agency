@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0c1422">
     <title>Boss Command Center | ISO 27001 AI Agency</title>
     <link rel="stylesheet" href="/app.css">
-    <script src="/app.js" defer></script>
+    <script src="/app.js" type="module"></script>
   </head>
   <body>
     <main id="login-view" class="login-wrap" hidden>
@@ -52,35 +52,61 @@
             <h1>Good day, Boss</h1>
             <p id="today-label" class="muted"></p>
           </div>
-          <button class="button primary" id="jump-to-assign">＋ Assign a task</button>
+          <button class="button primary" id="jump-to-assign">+ Assign a task</button>
         </header>
 
         <div id="page-error" class="notice error" role="alert" hidden></div>
 
+        <section class="scope-panel" aria-label="Dashboard view">
+          <div class="scope-topline">
+            <div class="view-switch" role="group" aria-label="Current work or history">
+              <button type="button" id="view-current" aria-pressed="true">Current</button>
+              <button type="button" id="view-history" aria-pressed="false">History</button>
+            </div>
+            <button type="button" class="button secondary" id="refresh-now">Refresh now</button>
+          </div>
+          <div class="scope-filters">
+            <label>Project / run<select id="filter-run"><option value="">All current runs</option></select></label>
+            <p id="scope-description" class="muted">Current shows the latest run for each project and all queued or running work.</p>
+          </div>
+          <details id="run-management">
+            <summary>Manage run history <span id="run-count" class="muted"></span></summary>
+            <p class="muted">Archive abandoned or finished runs to remove them from Current. Reports and execution statuses are preserved. Queued or running work cannot be archived.</p>
+            <div class="archive-toolbar">
+              <button type="button" class="button secondary" id="select-eligible">Select eligible runs</button>
+              <button type="button" class="button secondary" id="archive-runs" disabled>Archive selected</button>
+              <button type="button" class="button secondary" id="restore-runs" disabled>Unarchive selected</button>
+              <span id="selected-run-count" class="muted" role="status">No runs selected</span>
+            </div>
+            <div id="run-list" class="run-list"></div>
+          </details>
+          <p id="archive-message" class="form-message" role="status"></p>
+        </section>
+
         <section id="overview" class="section-block">
           <div class="section-heading">
-            <div><p class="eyebrow">LIVE SNAPSHOT</p><h2>Work at a glance</h2></div>
+            <div><p class="eyebrow" id="snapshot-label">CURRENT WORK</p><h2>Work at a glance</h2></div>
             <span class="updated-label" id="updated-label">Waiting for ledger data</span>
           </div>
           <div class="metric-grid">
-            <article class="metric-card"><span>Queued</span><strong id="count-queued">—</strong><small>Waiting to start</small></article>
-            <article class="metric-card"><span>Recent progress</span><strong id="count-progress">—</strong><small id="progress-note">Updated within 2 hours</small></article>
-            <article class="metric-card"><span>Blocked</span><strong id="count-blocked">—</strong><small>Needs attention</small></article>
-            <article class="metric-card"><span>Completed today</span><strong id="count-completed">—</strong><small>Recorded in the ledger</small></article>
+            <article class="metric-card"><span>Queued</span><strong id="count-queued">-</strong><small>Waiting to start</small></article>
+            <article class="metric-card"><span>Recent progress</span><strong id="count-progress">-</strong><small id="progress-note">Updated within 2 hours</small></article>
+            <article class="metric-card"><span>Blocked</span><strong id="count-blocked">-</strong><small>Needs attention</small></article>
+            <article class="metric-card"><span>Completed today</span><strong id="count-completed">-</strong><small>Recorded in the ledger</small></article>
           </div>
         </section>
 
         <section id="employees" class="section-block">
           <div class="section-heading">
             <div><p class="eyebrow">THE 7 + 1 TEAM</p><h2>Employee status</h2></div>
-            <span class="muted">Status comes from assigned tasks</span>
+            <span class="muted" id="employee-scope-label">Status comes from current tasks</span>
           </div>
           <div id="employee-cards" class="employee-grid"></div>
         </section>
 
         <section id="tasks" class="section-block">
           <div class="section-heading">
-            <div><p class="eyebrow">TASK LEDGER</p><h2>All tasks</h2></div>
+            <div><p class="eyebrow">TASK LEDGER</p><h2 id="tasks-heading">Current tasks</h2></div>
             <button class="button secondary" id="export-csv">Download CSV</button>
           </div>
           <div class="filters">
@@ -136,7 +162,7 @@
             <div id="chat-history" class="chat-history" aria-live="polite"></div>
             <form id="chat-form" class="chat-form">
               <label class="visually-hidden" for="chat-message">Your question</label>
-              <input id="chat-message" name="message" maxlength="2000" required placeholder="Ask about running or blocked tasks…">
+              <input id="chat-message" name="message" maxlength="2000" required placeholder="Ask about running or blocked tasks:">
               <button class="button primary" type="submit">Ask</button>
             </form>
           </div>
@@ -147,5 +173,16 @@
         </footer>
       </section>
     </div>
+    <dialog id="archive-dialog" aria-labelledby="archive-dialog-title">
+      <h2 id="archive-dialog-title">Review archive change</h2>
+      <p id="archive-preview"></p>
+      <ul id="archive-preview-runs"></ul>
+      <p class="muted">This changes dashboard visibility only. It does not delete files, cancel work or change execution statuses.</p>
+      <div class="dialog-actions">
+        <button type="button" class="button secondary" id="archive-cancel">Cancel</button>
+        <button type="button" class="button primary" id="archive-confirm">Confirm</button>
+      </div>
+      <p id="archive-dialog-error" class="form-message error" role="alert"></p>
+    </dialog>
   </body>
 </html>
