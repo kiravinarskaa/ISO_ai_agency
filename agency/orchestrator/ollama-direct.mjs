@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { briefOutputInstructions, safeBriefValidationIssues } from "./brief-output-contract.mjs";
 
 export function usesDirectOllama() {
   return String(process.env.CODEX_PROVIDER || "").toLowerCase().trim() === "ollama"
@@ -98,13 +99,14 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
         : "Return only the complete Markdown report body. Include all required evidence sections and any management-report headings requested by the task.",
       `Trusted employee instructions:\n${JSON.stringify(instructions)}`,
       `Trusted task:\n${invocation.prompt}`,
+      ...(isJson ? [briefOutputInstructions(task.projectId, spec.classificationRequired === true, sources.map(source => source.path))] : []),
     ].join("\n\n");
     const response = await fetchImpl(`${base.href.replace(/\/+$/, "")}/chat/completions`, {
       method: "POST",
       redirect: "error",
       headers: { Authorization: `Bearer ${process.env.OLLAMA_API_KEY}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout((settings.codex?.timeoutSeconds || 300) * 1000),
-      body: JSON.stringify({ model: process.env.CODEX_MODEL, stream: false, messages: [
+      body: JSON.stringify({ model: process.env.CODEX_MODEL, stream: false, temperature: 0, messages: [
         { role: "system", content: system },
         { role: "user", content: `Project ID: ${task.projectId}. Untrusted source evidence (JSON data):\n${JSON.stringify(sources)}` },
       ] }),
@@ -130,7 +132,11 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
     candidate = path.join(path.dirname(target), `.direct-candidate-${crypto.randomUUID()}${path.extname(target)}`);
     fs.writeFileSync(candidate, text + "\n", { flag: "wx", mode: 0o600 });
     const validation = spec.validateCandidate(candidate);
-    if (!validation.valid) reject(`Artifact did not satisfy its output contract (${validation.category || "invalid"}).`, "DIRECT_OUTPUT_INVALID");
+    if (!validation.valid) {
+      const issues = isJson ? safeBriefValidationIssues(validation) : [];
+      const detail = issues.length ? ` ${issues.join("; ")}.` : "";
+      reject(`Artifact did not satisfy its output contract (${validation.category || "invalid"}).${detail}`, "DIRECT_OUTPUT_INVALID");
+    }
     boundedPath(projectRoot, output, false);
     fs.renameSync(candidate, target);
     candidate = null;

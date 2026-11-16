@@ -26,6 +26,16 @@ No local Ollama installation, gateway, Tailscale tunnel or personal computer is
 needed. The Railway worker and its persistent Volume must remain available.
 Output validation is structural and does not establish factual accuracy.
 
+Generation uses temperature zero to reduce sampling variation. Client Manager
+receives an explicit JSON template with the exact project ID, required fields,
+collection types, source paths and (for staged Gmail intake) classification
+enum. This is a prompt contract, not provider-enforced structured output:
+Ollama Cloud currently does not support that feature. Invalid results still
+fail validation; no facts or classifications are silently filled in to pass.
+Retry logs and dashboard blocker details include safe field-level validation
+messages. These measures reduce avoidable failures, not guarantee success on
+every first request. Existing bounded task retries remain the recovery path.
+
 The code retains the previous CLI path for other providers and for an explicit
 `AGENT_EXECUTOR=codex`. That path requires a host supporting the CLI sandbox;
 it is not suitable for the Railway environment that denied user namespaces.

@@ -15,6 +15,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { startGroqResponsesProxy } from "./groq-responses-proxy.mjs";
 import { usesDirectOllama, directWritePreflight, executeDirectOllama } from "./ollama-direct.mjs";
+import { BRIEF_FIELDS, INTAKE_CATEGORIES } from "./brief-output-contract.mjs";
 
 // Remember this module's absolute filename so the default workspace is independent
 // of the folder from which the user launches Node.js.
@@ -43,18 +44,6 @@ const TASK_STATES = [
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const TASK_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const BRIEF_FIELDS = [
-  "project_id",
-  "client_objective",
-  "scope",
-  "systems",
-  "locations",
-  "deadline",
-  "known_facts",
-  "assumptions",
-  "missing_information",
-  "sources",
-];
 
 // Reading path for beginners:
 // 1. Validate configuration, task records, and project file paths.
@@ -674,6 +663,8 @@ export function validateBrief(
     };
   }
   const errors = [];
+  if (!brief || typeof brief !== "object" || Array.isArray(brief))
+    return { valid: false, category: "OUTPUT_SCHEMA_INVALID", path: filePath, errors: ["brief must be a JSON object"] };
   // Check all required top-level keys and collect errors instead of stopping at the first.
   for (const field of BRIEF_FIELDS)
     if (!(field in brief)) errors.push(`missing field: ${field}`);
@@ -705,13 +696,7 @@ export function validateBrief(
         errors.push("known_facts entries must contain a non-empty fact");
   if (classificationRequired) {
     // Staged email intake must have one of the explicit deterministic categories.
-    const categories = [
-      "new_client_request",
-      "existing_client_message",
-      "general_inquiry",
-      "irrelevant_or_automated",
-      "suspicious_or_requires_review",
-    ];
+    const categories = INTAKE_CATEGORIES;
     if (
       !brief.intake_classification ||
       !categories.includes(brief.intake_classification.category)
@@ -891,6 +876,7 @@ export function codexInvocation(settings, task) {
     prompt: buildPrompt(task, settings),
     directTask: {
       projectRoot, employeeRoot, routine: task.routine,
+      classificationRequired: Boolean(task.intakeStage),
       inputs: task.inputFiles, output: task.requiredOutput,
       validateCandidate: artifactPath => validateBrief(projectRoot, task.projectId, {
         classificationRequired: Boolean(task.intakeStage), artifactPath,

@@ -575,17 +575,20 @@ async function processEmailIntake(sheets) {
         workerLog("Client Manager completed intake classification.");
       } else if (outcome.outcome === "retry-scheduled") {
         dashboardTask.status = "Queued";
-        dashboardTask.blockerReason = "Client Manager retry is scheduled by the task queue.";
+        const failure = sanitizeDiagnostic(`${outcome.error?.code || "UNKNOWN"}: ${outcome.error?.message || "No diagnostic available."}`);
+        dashboardTask.blockerReason = `Retry scheduled: ${failure}`;
+        workerLog(`Client Manager retry scheduled (${failure}).`);
       } else {
         dashboardTask.status = "Blocked";
         // Guard notes explain policy blocks; process diagnostics explain preflight blocks.
         const detail =
           outcome.reason ||
+          outcome.error?.message ||
           outcome.guard?.notes?.join("; ") ||
           outcome.code ||
           outcome.outcome;
         dashboardTask.blockerReason = sanitizeDiagnostic(detail);
-        workerLog(`Client Manager stopped (${outcome.code || outcome.outcome}): ${detail}`);
+        workerLog(`Client Manager stopped (${outcome.code || outcome.error?.code || outcome.outcome}): ${sanitizeDiagnostic(detail)}`);
       }
       await updateTask(sheets, dashboardTask);
       return outcome;

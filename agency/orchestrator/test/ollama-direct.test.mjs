@@ -24,7 +24,7 @@ function fixture(t) {
     fs.rmSync(root, { recursive: true, force: true });
   });
   const invocation = { prompt: "Classify this synthetic intake.", directTask: {
-    projectRoot, employeeRoot, routine: "client-intake", output: "working/client-brief.json",
+    projectRoot, employeeRoot, routine: "client-intake", output: "working/client-brief.json", classificationRequired: true,
     inputs: [{ path: "client-input/email.md" }],
     validateCandidate: artifactPath => validateBrief(projectRoot, "TEST", { artifactPath, classificationRequired: true }),
   } };
@@ -43,6 +43,11 @@ test("direct intake passes bounded source data, no tools, and saves only a valid
     assert.equal(options.redirect, "error");
     const body = JSON.parse(options.body);
     assert.equal(body.tools, undefined);
+    assert.equal(body.temperature, 0);
+    assert.equal(body.response_format, undefined); // Ollama Cloud has no schema enforcement.
+    assert.match(body.messages[0].content, /Exact output structure/);
+    assert.match(body.messages[0].content, /"project_id": "TEST"/);
+    assert.match(body.messages[0].content, /intake_classification is REQUIRED/);
     assert.match(body.messages[0].content, /NO shell/);
     assert.match(body.messages[1].content, /untrusted test/);
     assert.ok(!options.body.includes("test-secret-never-log"));
@@ -104,4 +109,35 @@ test("host preflight checks write/read and cleans up without a model or subproce
   const f = fixture(t);
   assert.equal(directWritePreflight(f.projectRoot).executor, "ollama-direct");
   assert.deepEqual(fs.readdirSync(path.join(f.projectRoot, "working")), []);
+});
+
+test("missing fields and wrong collection types produce precise safe diagnostics", async t => {
+  const f = fixture(t);
+  const brief = { ...f.brief, systems: "AWS" };
+  delete brief.scope;
+  delete brief.intake_classification;
+  const result = await f.execute(async () => reply(JSON.stringify(brief)));
+  assert.equal(result.code, "DIRECT_OUTPUT_INVALID");
+  assert.match(result.error, /missing field: scope/);
+  assert.match(result.error, /systems must be an array/);
+  assert.match(result.error, /intake_classification.category/);
+  assert.ok(!result.error.includes("AWS"));
+  assert.equal(fs.existsSync(f.target), false);
+});
+
+for (const value of [null, [], "not an object", 12])
+  test(`non-object brief is safely rejected: ${JSON.stringify(value)}`, async t => {
+    const f = fixture(t);
+    const result = await f.execute(async () => reply(JSON.stringify(value)));
+    assert.equal(result.code, "DIRECT_OUTPUT_INVALID");
+    assert.match(result.error, /brief must be a JSON object/);
+    assert.equal(fs.existsSync(f.target), false);
+  });
+
+test("validation diagnostics never echo arbitrary validator text", async t => {
+  const f = fixture(t);
+  f.invocation.directTask.validateCandidate = () => ({ valid: false, category: "OUTPUT_SCHEMA_INVALID", errors: ["test-secret-never-log", "missing field: scope"] });
+  const result = await f.execute(async () => reply(JSON.stringify(f.brief)));
+  assert.match(result.error, /missing field: scope/);
+  assert.ok(!JSON.stringify(result).includes("test-secret-never-log"));
 });
