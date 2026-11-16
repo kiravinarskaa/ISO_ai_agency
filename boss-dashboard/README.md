@@ -22,6 +22,15 @@ Each change is limited to 100 runs. Queued or running work is rechecked by the
 server and cannot be archived. If work restarts after an archive, active work
 overrides the archive flag so it is visible in Current.
 
+The run list has explicit status and search filters, separate from the task
+board filters. **Select blocked runs**, **Select completed runs**, **Select
+archived runs**, and **Select all shown** replace the current selection using
+only the filtered run list. Counts on the buttons show the selectable total
+(up to 100). **Clear selection** deselects everything. Changing filters clears
+selection so hidden runs cannot be archived accidentally. A run with seven
+completed tasks and one blocked task is blocked, not fully completed; archiving
+it still archives the visibility of the whole run, as shown in the preview.
+
 Archive actions append only `Run Key`, `Action`, and `Timestamp` to a separate
 **Dashboard Archives** Sheet tab. Neither Task Ledger nor Ledger rows are
 deleted, cancelled, marked complete or rewritten by archiving. Reports and

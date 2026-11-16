@@ -66,17 +66,29 @@
             <button type="button" class="button secondary" id="refresh-now">Refresh now</button>
           </div>
           <div class="scope-filters">
-            <label>Project / run<select id="filter-run"><option value="">All current runs</option></select></label>
+            <label>Project or assessment run<select id="filter-run"><option value="">All current runs</option></select></label>
             <p id="scope-description" class="muted">Current shows the latest run for each project and all queued or running work.</p>
           </div>
           <details id="run-management">
             <summary>Manage run history <span id="run-count" class="muted"></span></summary>
             <p class="muted">Archive abandoned or finished runs to remove them from Current. Reports and execution statuses are preserved. Queued or running work cannot be archived.</p>
+            <div class="filters run-filters">
+              <label>Run status<select id="filter-run-state"><option value="all">All run statuses</option><option value="blocked">Blocked runs</option><option value="completed">Fully completed runs</option><option value="active">Queued or running runs</option><option value="archived">Archived runs</option><option value="other">Other recorded runs</option></select></label>
+              <label>Find a run<input id="run-search" type="search" placeholder="Search project ID or run name"></label>
+              <button type="button" class="button secondary" id="clear-run-filters">Reset run filters</button>
+            </div>
+            <p class="muted" id="run-filter-help">These filters affect only the run list below. Selection buttons replace the selection and never include hidden runs.</p>
             <div class="archive-toolbar">
-              <button type="button" class="button secondary" id="select-eligible">Select eligible runs</button>
+              <button type="button" class="button secondary" id="select-blocked">Select blocked runs</button>
+              <button type="button" class="button secondary" id="select-completed">Select completed runs</button>
+              <button type="button" class="button secondary" id="select-archived">Select archived runs</button>
+              <button type="button" class="button secondary" id="select-all-runs">Select all shown</button>
+              <button type="button" class="button secondary" id="clear-run-selection">Clear selection</button>
+              <span id="selected-run-count" class="muted" role="status">No runs selected</span>
+            </div>
+            <div class="archive-toolbar">
               <button type="button" class="button secondary" id="archive-runs" disabled>Archive selected</button>
               <button type="button" class="button secondary" id="restore-runs" disabled>Unarchive selected</button>
-              <span id="selected-run-count" class="muted" role="status">No runs selected</span>
             </div>
             <div id="run-list" class="run-list"></div>
           </details>

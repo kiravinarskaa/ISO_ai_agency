@@ -1,6 +1,6 @@
 // This file only handles the page. The server owns passwords, Google access,
 // task validation, and chat answers based on the task ledger.
-import { scopedTasks, employeeWork } from "./run-model.js";
+import { scopedTasks, employeeWork, runStatus, filterRuns, selectRunKeys } from "./run-model.js";
 const EMPLOYEES = [
   { id: "client-manager", name: "Client Manager" },
   { id: "isms-readiness-planner", name: "ISMS Readiness Planner" },
@@ -14,6 +14,7 @@ const EMPLOYEES = [
 const STATUSES = ["Queued", "In Progress", "Blocked", "Completed"];
 const PRIORITIES = ["Low", "Normal", "High", "Urgent"];
 const state = { tasks: [], runs: [], view: "current", runKey: "", archiveAvailable: false,
+  runStatus: "all", runSearch: "",
   selectedRuns: new Set(), pendingArchive: null, conversationId: getConversationId("pm"), refreshing: false };
 const $ = (selector) => document.querySelector(selector);
 
@@ -310,9 +311,17 @@ function viewRuns() {
   return state.runs.filter(run => state.view === "history" ? run.historical : !run.historical);
 }
 
+function listedRuns() {
+  return filterRuns(viewRuns(), { status: state.runStatus, search: state.runSearch, runKey: state.runKey });
+}
+
 function renderSelection() {
   const selected = state.runs.filter(run => state.selectedRuns.has(run.key));
-  $("#selected-run-count").textContent = selected.length ? selected.length + " run(s) selected" : "No runs selected";
+  const blocked = selected.filter(run => runStatus(run) === "blocked").length;
+  const completed = selected.filter(run => runStatus(run) === "completed").length;
+  $("#selected-run-count").textContent = selected.length
+    ? selected.length + " run(s) selected � " + blocked + " blocked � " + completed + " fully completed" : "No runs selected";
+  $("#clear-run-selection").disabled = selected.length === 0;
   $("#archive-runs").disabled = !state.archiveAvailable || !selected.some(run => run.canArchive);
   $("#restore-runs").disabled = !state.archiveAvailable || !selected.some(run => run.archived);
 }
@@ -331,18 +340,23 @@ function renderRunControls() {
   $("#filter-run").innerHTML = '<option value="">All ' + state.view + ' runs</option>' + runs.map(run =>
     '<option value="' + escapeAttribute(run.key) + '">' + escapeHtml((run.projectId || run.label) + " � " + formatDate(run.updatedAt) + (run.archived ? " � Archived" : "")) + '</option>').join("");
   $("#filter-run").value = state.runKey;
-  const listed = runs.filter(run => !state.runKey || run.key === state.runKey);
+  const listed = listedRuns();
   const eligibleKeys = new Set(listed.filter(run => !run.pending).map(run => run.key));
   state.selectedRuns = new Set([...state.selectedRuns].filter(key => eligibleKeys.has(key)));
-  $("#run-count").textContent = "(" + listed.length + ")";
-  $("#select-eligible").disabled = !state.archiveAvailable || !listed.some(run => !run.pending);
-  $("#select-eligible").textContent = state.view === "history" ? "Select archived runs" : "Select eligible runs";
+  $("#run-count").textContent = "(" + listed.length + " of " + runs.length + " shown)";
+  for (const [id, kind] of [["select-blocked", "blocked"], ["select-completed", "completed"], ["select-archived", "archived"], ["select-all-runs", "all"]]) {
+    const count = selectRunKeys(listed, kind).length;
+    $("#" + id).disabled = !state.archiveAvailable || count === 0;
+    $("#" + id).textContent = ({ blocked: "Select blocked runs", completed: "Select completed runs", archived: "Select archived runs", all: "Select all shown" })[kind] + " (" + count + ")";
+  }
+  $("#filter-run-state").value = state.runStatus;
   $("#run-list").innerHTML = listed.length ? listed.map(run =>
     '<label class="run-row"><input type="checkbox" class="run-select" value="' + escapeAttribute(run.key) + '" ' +
     (state.selectedRuns.has(run.key) ? "checked " : "") + (run.pending || !state.archiveAvailable ? "disabled " : "") + '>' +
     '<span><strong>' + escapeHtml(run.projectId || run.label) + '</strong><small>' + escapeHtml(run.label) + ' � ' +
     escapeHtml(formatDate(run.updatedAt)) + '</small><small>' + run.taskCount + ' tasks � ' + run.completedCount + ' completed � ' + run.blockedCount + ' blocked</small></span>' +
-    '<span class="status-pill ' + (run.pending ? "in-progress" : "idle") + '">' + (run.pending ? "Queued / running" : run.archived ? "Archived" : "Recorded") + '</span></label>').join("")
+    '<span class="status-pill ' + ({ active: "in-progress", blocked: "blocked", completed: "completed", other: "idle" })[runStatus(run)] + '">' +
+    (run.archived ? "Archived � " : "") + ({ active: "Queued / running", blocked: "Blocked", completed: "Completed", other: "Recorded" })[runStatus(run)] + '</span></label>').join("")
     : '<p class="empty-state">No runs in this view.</p>';
   renderSelection();
 }
@@ -350,6 +364,9 @@ function renderRunControls() {
 function changeView(view) {
   state.view = view;
   state.runKey = "";
+  state.runStatus = "all";
+  state.runSearch = "";
+  $("#run-search").value = "";
   state.selectedRuns.clear();
   renderAll();
 }
@@ -361,7 +378,8 @@ function previewArchive(action) {
   $("#archive-dialog-title").textContent = action === "archive" ? "Archive selected runs?" : "Unarchive selected runs?";
   $("#archive-preview").textContent = runs.length + " run(s), containing " + runs.reduce((sum, run) => sum + run.taskCount, 0) + " task records. " +
     (action === "archive" ? "They will remain available in History." : "Archive flags will be removed. Older runs of the same project still remain in History.");
-  $("#archive-preview-runs").innerHTML = runs.map(run => '<li>' + escapeHtml(run.projectId || run.label) + ' � ' + escapeHtml(formatDate(run.updatedAt)) + '</li>').join("");
+  $("#archive-preview-runs").innerHTML = runs.map(run => '<li>' + escapeHtml(run.projectId || run.label) + ' � ' + escapeHtml(formatDate(run.updatedAt)) +
+    ' � ' + run.taskCount + ' tasks (' + run.blockedCount + ' blocked, ' + run.completedCount + ' completed)</li>').join("");
   $("#archive-dialog-error").textContent = "";
   $("#archive-confirm").textContent = action === "archive" ? "Archive runs" : "Unarchive runs";
   $("#archive-dialog").showModal();
@@ -378,10 +396,23 @@ $("#run-list").addEventListener("change", event => {
   else state.selectedRuns.delete(event.target.value);
   renderSelection();
 });
-$("#select-eligible").addEventListener("click", () => {
-  state.selectedRuns = new Set(viewRuns().filter(run => (!state.runKey || run.key === state.runKey) &&
-    (state.view === "history" ? run.archived : run.canArchive)).slice(0, 100).map(run => run.key));
-  renderRunControls();
+for (const [id, kind] of [["select-blocked", "blocked"], ["select-completed", "completed"], ["select-archived", "archived"], ["select-all-runs", "all"]]) {
+  $("#" + id).addEventListener("click", () => {
+    state.selectedRuns = new Set(selectRunKeys(listedRuns(), kind));
+    $("#archive-message").textContent = state.selectedRuns.size === 100 ? "Selection limited to 100 runs per change." : "";
+    renderRunControls();
+  });
+}
+$("#clear-run-selection").addEventListener("click", () => { state.selectedRuns.clear(); renderRunControls(); });
+$("#filter-run-state").addEventListener("change", event => {
+  state.runStatus = event.target.value; state.selectedRuns.clear(); renderRunControls();
+});
+$("#run-search").addEventListener("input", event => {
+  state.runSearch = event.target.value; state.selectedRuns.clear(); renderRunControls();
+});
+$("#clear-run-filters").addEventListener("click", () => {
+  state.runStatus = "all"; state.runSearch = ""; $("#run-search").value = "";
+  state.selectedRuns.clear(); renderRunControls();
 });
 $("#archive-runs").addEventListener("click", () => previewArchive("archive"));
 $("#restore-runs").addEventListener("click", () => previewArchive("restore"));

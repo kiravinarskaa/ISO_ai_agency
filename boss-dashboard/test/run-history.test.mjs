@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { decorateRuns, groupRuns, scopedTasks, employeeWork } from "../public/run-model.js";
+import { decorateRuns, groupRuns, scopedTasks, employeeWork, runStatus, filterRuns, selectRunKeys } from "../public/run-model.js";
 import { archiveEventsFromRows, planArchiveChange, changeRunArchives } from "../run-archives.mjs";
 
 export const sampleTasks = () => [
@@ -93,4 +93,31 @@ test("fresh status checks reject runs that became active after preview, without 
 test("storage failure is surfaced rather than reported as successful archive", async () => {
   await assert.rejects(changeRunArchives({ loadTasks: async () => sampleTasks(), loadEvents: async () => [],
     appendEvents: async () => { throw Error("offline"); } }, ["task:abandoned"], "archive"), /offline/);
+});
+
+test("blocked and fully completed selection never mix outcomes or include active work", () => {
+  const runs = [
+    { key: "mixed", pending: false, canArchive: true, taskCount: 8, completedCount: 7, blockedCount: 1 },
+    { key: "done", pending: false, canArchive: true, taskCount: 8, completedCount: 8, blockedCount: 0 },
+    { key: "active", pending: true, canArchive: false, taskCount: 8, completedCount: 5, blockedCount: 1 },
+    { key: "archived", pending: false, canArchive: false, archived: true, taskCount: 8, completedCount: 8, blockedCount: 0 },
+  ];
+  assert.equal(runStatus(runs[0]), "blocked");
+  assert.deepEqual(selectRunKeys(runs, "blocked"), ["mixed"]);
+  assert.deepEqual(selectRunKeys(runs, "completed"), ["done"]);
+  assert.deepEqual(selectRunKeys(runs, "archived"), ["archived"]);
+  assert.deepEqual(selectRunKeys(runs, "all"), ["mixed", "done", "archived"]);
+  assert.deepEqual(selectRunKeys(runs, "unknown"), []);
+});
+
+test("run status, project and search filters combine before selecting visible runs", () => {
+  const runs = groupRuns(sampleTasks());
+  const blocked = filterRuns(runs, { status: "blocked", search: "ABANDONED" });
+  assert.deepEqual(selectRunKeys(blocked, "all"), ["task:abandoned"]);
+  assert.equal(filterRuns(runs, { status: "completed", runKey: "task:abandoned" }).length, 0);
+  assert.equal(filterRuns(runs, { status: "active" }).length, 2);
+  assert.equal(filterRuns(runs, { search: "no matching run" }).length, 0);
+  assert.equal(filterRuns(groupRuns(sampleTasks(), [{ runKey: "task:abandoned", action: "archive" }]), { status: "archived" }).length, 1);
+  const many = Array.from({ length: 110 }, (_, i) => ({ key: String(i), pending: false, canArchive: true, taskCount: 1, completedCount: 1, blockedCount: 0 }));
+  assert.equal(selectRunKeys(many, "completed").length, 100);
 });

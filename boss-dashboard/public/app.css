@@ -147,6 +147,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--mint); outline: 
 #run-management summary { cursor: pointer; font-size: .85rem; }
 #run-management > p { font-size: .78rem; line-height: 1.5; }
 .archive-toolbar { margin-bottom: 12px; font-size: .76rem; }
+.run-filters { align-items: end; margin-top: 14px; }
+.run-filters label:last-of-type { flex: 1; }
 .run-list { max-height: 330px; overflow: auto; display: grid; gap: 8px; }
 .run-row { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--page); border: 1px solid var(--line); border-radius: 8px; }
 .run-row input { width: 18px; min-height: 18px; flex: 0 0 18px; accent-color: var(--mint); }

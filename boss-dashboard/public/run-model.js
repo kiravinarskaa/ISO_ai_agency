@@ -69,3 +69,24 @@ export function employeeWork(tasks, employeeId) {
     blocked: latest(own.filter(task => task.status === "Blocked")),
   };
 }
+
+export function runStatus(run) {
+  if (run.pending) return "active";
+  if (run.blockedCount > 0) return "blocked";
+  if (run.taskCount > 0 && run.completedCount === run.taskCount) return "completed";
+  return "other";
+}
+
+export function filterRuns(runs, { status = "all", search = "", runKey = "" } = {}) {
+  const query = search.trim().toLowerCase();
+  return runs.filter(run => (!runKey || run.key === runKey) &&
+    (status === "all" || (status === "archived" ? run.archived : runStatus(run) === status)) &&
+    (!query || [run.projectId, run.label, run.key].some(value => String(value || "").toLowerCase().includes(query))));
+}
+
+export function selectRunKeys(runs, kind, limit = 100) {
+  return runs.filter(run => !run.pending && (
+    kind === "all" || (kind === "archived" && run.archived) ||
+    (run.canArchive && (kind === "blocked" || kind === "completed") && runStatus(run) === kind)
+  )).slice(0, limit).map(run => run.key);
+}
