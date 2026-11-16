@@ -1,5 +1,46 @@
 # Cloud agent worker
 
+## Ollama Cloud direct execution
+
+For the Railway worker, set:
+
+| Variable | Value |
+| --- | --- |
+| `CODEX_PROVIDER` | `ollama` |
+| `OLLAMA_BASE_URL` | `https://ollama.com/v1` |
+| `OLLAMA_API_KEY` | Your Ollama Cloud key, stored only in Railway Variables |
+| `CODEX_MODEL` | `gpt-oss:120b` (or another supported cloud model) |
+| `AGENT_EXECUTOR` | `ollama-direct` (also the default for remote Ollama) |
+
+These names retain compatibility with existing configuration; direct execution
+does not launch Codex CLI. Startup logs identify the selected executor. The
+Node.js host reads only the declared source files and employee instructions,
+calls Ollama's `/v1/chat/completions` endpoint with no tools, validates a
+temporary candidate, and atomically saves the routine-owned artifact. Invalid,
+empty, truncated and failed responses preserve prior deliverables. The local
+preflight verifies the host's actual write/read access without a model call or
+Linux namespace. Existing guards, leases, intake classification, dependency
+checks, reporting policy and final DOCX packaging remain in place.
+
+No local Ollama installation, gateway, Tailscale tunnel or personal computer is
+needed. The Railway worker and its persistent Volume must remain available.
+Output validation is structural and does not establish factual accuracy.
+
+Generation uses temperature zero to reduce sampling variation. Client Manager
+receives an explicit JSON template with the exact project ID, required fields,
+collection types, source paths and (for staged Gmail intake) classification
+enum. This is a prompt contract, not provider-enforced structured output:
+Ollama Cloud currently does not support that feature. Invalid results still
+fail validation; no facts or classifications are silently filled in to pass.
+Retry logs and dashboard blocker details include safe field-level validation
+messages. These measures reduce avoidable failures, not guarantee success on
+every first request. Existing bounded task retries remain the recovery path.
+
+The code retains the previous CLI path for other providers and for an explicit
+`AGENT_EXECUTOR=codex`. That path requires a host supporting the CLI sandbox;
+it is not suitable for the Railway environment that denied user namespaces.
+The older Codex setup notes below apply only to that CLI path.
+
 The dashboard and Google Sheet are already connected. This worker is a separate
 Railway service that watches dashboard tasks marked **Run the full eight-agent
 synthetic demo** and, when configured, polls Gmail for new inquiries. It runs
@@ -36,23 +77,23 @@ customer email. Progress and the final report are written to the Google Sheet.
    `Dockerfile` and monorepo folders.
 3. Add a Railway Volume mounted at `/app/agency/projects`.
 4. Add these private variables to the worker service:
-   - `GOOGLE_SPREADSHEET_ID` — same Sheet ID used by the dashboard.
-   - `GOOGLE_SERVICE_ACCOUNT_JSON` — same complete service-account JSON key.
-   - `CODEX_COMMAND` — `codex`.
-   - `CODEX_MODEL` — the exact model name configured for your existing Codex
+   - `GOOGLE_SPREADSHEET_ID` - same Sheet ID used by the dashboard.
+   - `GOOGLE_SERVICE_ACCOUNT_JSON` - same complete service-account JSON key.
+   - `CODEX_COMMAND` - `codex`.
+   - `CODEX_MODEL` - the exact model name configured for your existing Codex
      workflow. The worker refuses to run if this is missing.
-   - `OPENAI_API_KEY` — API authentication for the cloud Codex CLI. This may
+   - `OPENAI_API_KEY` - API authentication for the cloud Codex CLI. This may
      incur separate API charges.
-   - `AGENT_WORKER_ENABLED` — begin with `false`.
-   - `EMAIL_INTAKE_ENABLED` — begin with `false`; set to `true` only after the
+   - `AGENT_WORKER_ENABLED` - begin with `false`.
+   - `EMAIL_INTAKE_ENABLED` - begin with `false`; set to `true` only after the
      read-only Gmail OAuth variables are configured.
-   - `GMAIL_OAUTH_CREDENTIALS_JSON` — complete Google Desktop OAuth credentials
+   - `GMAIL_OAUTH_CREDENTIALS_JSON` - complete Google Desktop OAuth credentials
      JSON from the Gmail connector's `private/credentials.json`.
-   - `GMAIL_OAUTH_TOKENS_JSON` — complete authorized token JSON from
+   - `GMAIL_OAUTH_TOKENS_JSON` - complete authorized token JSON from
      `private/tokens.json`; grant only Gmail read-only access.
-   - `GMAIL_POLL_MS` — optional; defaults to 60000 (one minute).
-   - `GMAIL_PRIVATE_DIR` — set to `/app/agency/projects/.worker-state/gmail/private`.
-   - `WORKER_POLL_MS` — optional; defaults to 15000 (15 seconds).
+   - `GMAIL_POLL_MS` - optional; defaults to 60000 (one minute).
+   - `GMAIL_PRIVATE_DIR` - set to `/app/agency/projects/.worker-state/gmail/private`.
+   - `WORKER_POLL_MS` - optional; defaults to 15000 (15 seconds).
 5. Set `/health` as the worker health-check path. Do not generate a public
    domain for the worker; the dashboard remains the public service.
 6. Deploy and confirm `/health` succeeds. Check the Railway usage page before

@@ -9,7 +9,7 @@
  */
 import fs from "node:fs";
 import { buildFinalDocx } from "./final-report-docx.mjs";
-import { MANAGEMENT_INSTRUCTION, validateManagementReport } from "./management-report-contract.mjs";
+import { MANAGEMENT_INSTRUCTION, validateManagementReport, managementOutputTemplate } from "./management-report-contract.mjs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -21,6 +21,7 @@ import {
 } from "../orchestrator/orchestrator.mjs";
 import { inspectInstallation } from "./receipts.mjs";
 import { loadAuthorizedPublicReview } from "../integrations/gmail/public-intake-policy.mjs";
+import { usesDirectOllama, directWritePreflight } from "../orchestrator/ollama-direct.mjs";
 
 // Resolve paths from this module so the demo behaves the same from any shell folder.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -237,7 +238,7 @@ function validateMarkdown(file, workflow = null) {
     };
   if (workflow) {
     const management = validateManagementReport(text);
-    if (!management.valid) return { valid: false, category: "MANAGEMENT_REPORT_INCOMPLETE", reason: management.errors.join("; ") };
+    if (!management.valid) return { valid: false, category: "MANAGEMENT_REPORT_INCOMPLETE", reason: management.errors.join("; "), errors: management.errors };
     // The project manager report must mention each observed employee and status.
     const absent = workflow.filter(
       (row) =>
@@ -410,6 +411,10 @@ export async function restrictedPreflight(
   projectRoot,
   executor = spawnCodex,
 ) {
+  if (usesDirectOllama() && executor === spawnCodex) {
+    try { return directWritePreflight(projectRoot); }
+    catch { throw Object.assign(new Error("Direct executor host write/read preflight failed."), { code: "PREFLIGHT_FAILED" }); }
+  }
   const target = path.join(
     projectRoot,
     "working",
@@ -728,7 +733,7 @@ export async function runDemo({
         throw Object.assign(new Error(conflict), {
           code: "INSTALL_MARKER_CONFLICT",
         });
-      const guardResult = await runGuard(employeeRoot, entry, projectRoot, {
+      const guardResult = await guard(employeeRoot, entry, projectRoot, {
         dryRun,
       });
       if (!guardResult.ok) throw new Error(guardResult.reason);
@@ -771,6 +776,11 @@ export async function runDemo({
           projectRoot,
           prompt,
         );
+        invocation.directTask = {
+          projectRoot, employeeRoot, routine: entry.routine,
+          inputs: [{ path: "client-input/company-profile.md", exists: true }], output: entry.output,
+          validateCandidate: artifactPath => validateBrief(projectRoot, projectId, { artifactPath }),
+        };
         const result = await (
           executor || ((s, task, opts) => spawnCodex(s, task, opts))
         )(settings, { projectId }, { invocation });
@@ -999,12 +1009,21 @@ export async function runDemo({
         projectRoot,
         prompt,
       );
+      invocation.directTask = {
+        projectRoot, employeeRoot, routine: entry.routine,
+        inputs: record.inputFiles, output: entry.output,
+        artifactInstructions: entry.employeeId === "project-manager" ? managementOutputTemplate() : "",
+        validationIssues: validation => validation.category === "MANAGEMENT_REPORT_INCOMPLETE" ? validation.errors : [],
+        validateCandidate: candidate => validateMarkdown(candidate, entry.employeeId === "project-manager" ? promptWorkflow : null),
+      };
       const result = await (
         // This executor call is where Codex receives the task and may invoke an AI model.
         executor || ((s, task, opts) => spawnCodex(s, task, opts))
       )(settings, { projectId }, { invocation });
       record.subprocessExitStatus = result.exitCode ?? null;
       record.process = {
+        executor: result.executor || "codex",
+        usage: result.usage || null,
         spawnSucceeded: result.spawnSucceeded ?? null,
         signal: result.signal ?? null,
         timedOut: result.timedOut ?? false,
@@ -1016,7 +1035,7 @@ export async function runDemo({
         output,
         entry.employeeId === "project-manager" ? promptWorkflow : null,
       );
-      record.validation = validation;
+      record.validation = !result.ok && result.artifactValidation ? result.artifactValidation : validation;
       if (result.ok && validation.valid) {
         record.status = "completed";
         record.outputHash = hashFile(output);

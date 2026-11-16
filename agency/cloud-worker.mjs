@@ -15,6 +15,7 @@ import crypto from "node:crypto";
 import { google } from "googleapis";
 import { runDemo, ROSTER } from "./demo/run-demo.mjs";
 import { sanitizeDiagnostic } from "./orchestrator/orchestrator.mjs";
+import { usesDirectOllama } from "./orchestrator/ollama-direct.mjs";
 import {
   loadConfiguration,
   listTasks,
@@ -290,7 +291,7 @@ async function createEmployeeRows(sheets, parent, projectId, executionMode = "sy
       status: "Queued",
       resultLink: "",
       completionTime: "",
-      title: parent.title + " — " + EMPLOYEE_NAMES.get(employee.employeeId),
+      title: parent.title + " - " + EMPLOYEE_NAMES.get(employee.employeeId),
       deadline: parent.deadline,
       blockerReason: "",
       updatedAt: now,
@@ -574,17 +575,20 @@ async function processEmailIntake(sheets) {
         workerLog("Client Manager completed intake classification.");
       } else if (outcome.outcome === "retry-scheduled") {
         dashboardTask.status = "Queued";
-        dashboardTask.blockerReason = "Client Manager retry is scheduled by the task queue.";
+        const failure = sanitizeDiagnostic(`${outcome.error?.code || "UNKNOWN"}: ${outcome.error?.message || "No diagnostic available."}`);
+        dashboardTask.blockerReason = `Retry scheduled: ${failure}`;
+        workerLog(`Client Manager retry scheduled (${failure}).`);
       } else {
         dashboardTask.status = "Blocked";
         // Guard notes explain policy blocks; process diagnostics explain preflight blocks.
         const detail =
           outcome.reason ||
+          outcome.error?.message ||
           outcome.guard?.notes?.join("; ") ||
           outcome.code ||
           outcome.outcome;
         dashboardTask.blockerReason = sanitizeDiagnostic(detail);
-        workerLog(`Client Manager stopped (${outcome.code || outcome.outcome}): ${detail}`);
+        workerLog(`Client Manager stopped (${outcome.code || outcome.error?.code || outcome.outcome}): ${sanitizeDiagnostic(detail)}`);
       }
       await updateTask(sheets, dashboardTask);
       return outcome;
@@ -683,6 +687,9 @@ server.listen(port, "0.0.0.0", async () => {
     return;
   }
   try {
+    console.log(usesDirectOllama()
+      ? "Agent executor: Ollama direct API; Node.js owns bounded file reads, validation and writes. No Codex sandbox required."
+      : "Agent executor: Codex CLI with workspace sandbox.");
     await fs.mkdir(WORKER_STATE_DIR, { recursive: true });
     await fs.mkdir(GMAIL_STATE_DIR, { recursive: true });
     const sheets = await makeSheetsClient();

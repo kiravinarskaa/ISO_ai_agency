@@ -190,6 +190,61 @@ function makeLegacyReceipts(f) {
 const guard = async () => ({ ok: true, verdict: "run" });
 const preflight = async () => ({ ok: true });
 
+for (const invalidPM of [false, true]) test(invalidPM
+  ? "Ollama direct preserves actual PM candidate validation failure in run records"
+  : "Ollama direct executes all eight stages through host validation and DOCX packaging", async t => {
+  const f = fixture();
+  const briefFile = path.join(f.project, "working/client-brief.json");
+  const brief = fs.readFileSync(briefFile, "utf8");
+  fs.rmSync(briefFile);
+  for (const row of ROSTER)
+    fs.writeFileSync(path.join(f.workspace, row.workspaceRoot, "WORK-CYCLE.md"), "Host manages run state.");
+  const vars = { AGENT_EXECUTOR: "ollama-direct", CODEX_PROVIDER: "ollama", OLLAMA_BASE_URL: "https://ollama.com/v1", OLLAMA_API_KEY: "mock-key", CODEX_MODEL: "gpt-oss:120b" };
+  const previous = Object.fromEntries(Object.keys(vars).map(key => [key, process.env[key]]));
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  Object.assign(process.env, vars);
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries(previous)) value === undefined ? delete process.env[key] : process.env[key] = value;
+    f.cleanup();
+  });
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "https://ollama.com/v1/chat/completions");
+    const body = JSON.parse(options.body);
+    const system = body.messages[0].content;
+    const row = ROSTER[seen.length];
+    seen.push(row.employeeId);
+    assert.ok(system.includes(row.routine));
+    assert.equal(body.tools, undefined);
+    let content = row.employeeId === "client-manager" ? brief : VALID_MD;
+    if (row.employeeId === "project-manager") {
+      content += "\n" + ['Executive summary','Scope and evidence basis','Findings and business impact','Work completed and remediation status','Remediation roadmap','Metrics and limitations','Employee contributions'].map(title => '## '+title+'\nTest source supported summary.').join('\n') + '\nNo material issues can be established from the supplied evidence.\n';
+      const outcomes = JSON.parse(system.match(/Prior observed outcomes: (\[[^\n]+\])/)[1]);
+      content += "\n## Execution status\n" + outcomes.map(item => `| ${item.employeeId} | ${item.status} |`).join("\n") + "\n";
+      assert.match(body.messages[1].content, /working\/evidence-register.md/);
+      assert.match(system, /Required report layout follows/);
+      if (invalidPM) content = VALID_MD;
+    }
+    return new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content } }], usage: { prompt_tokens: 100, completion_tokens: 50 } }));
+  };
+  // Use the real default executor and preflight, with only network and guards mocked.
+  const result = await runDemo({ workspaceRoot: f.workspace, projectId: "TEST-001", guard });
+  assert.deepEqual(seen, ROSTER.map(row => row.employeeId));
+  if (invalidPM) {
+    assert.notEqual(result.manifest.finalStatus, "completed");
+    const manager = result.manifest.agents.at(-1);
+    assert.equal(manager.validation.category, "MANAGEMENT_REPORT_INCOMPLETE");
+    assert.match(manager.validation.reason, /missing management section: Executive summary/);
+    assert.ok(!manager.validation.reason.includes("absent or unsafe"));
+    assert.equal(fs.existsSync(path.join(f.project, "working/final-agency-report.md")), false);
+    return;
+  }
+  assert.equal(result.manifest.finalStatus, "completed");
+  assert.ok(result.manifest.agents.every(row => row.validation.valid));
+  assert.ok(fs.existsSync(path.join(f.project, "working/final-agency-report.docx")));
+});
+
 // Test goal: guard arguments match each employee CLI and subprocess failures remain denials.
 test("guard invocation uses supported employee arguments and preserves failures", () => {
   const employeeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "iso-guard-test-"));

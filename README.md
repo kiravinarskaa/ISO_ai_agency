@@ -2,6 +2,13 @@
 
 Documentation updated 6 November 2026.
 
+Worker update, 16 November 2026: remote Ollama now defaults to a direct,
+text-only API executor. Node.js supplies bounded source contents, validates
+responses and saves each owned artifact; it does not launch Codex or require
+Linux namespaces for this mode. All eight roles share the existing sequencing
+and output checks. See [Ollama Cloud setup](CLOUD-WORKER.md#ollama-cloud-direct-execution).
+The older CLI descriptions below apply to the retained Codex execution mode.
+
 This educational prototype coordinates eight AI employees to organize a customer request, review supplied information and evidence, recommend improvements, and prepare a management report. It supports readiness preparation; it does not conduct an accredited certification audit, certify an organization, or establish compliance.
 
 ## Purpose and current implementation
