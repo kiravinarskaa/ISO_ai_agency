@@ -9,7 +9,7 @@
  */
 import fs from "node:fs";
 import { buildFinalDocx } from "./final-report-docx.mjs";
-import { MANAGEMENT_INSTRUCTION, validateManagementReport } from "./management-report-contract.mjs";
+import { MANAGEMENT_INSTRUCTION, validateManagementReport, managementOutputTemplate } from "./management-report-contract.mjs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -238,7 +238,7 @@ function validateMarkdown(file, workflow = null) {
     };
   if (workflow) {
     const management = validateManagementReport(text);
-    if (!management.valid) return { valid: false, category: "MANAGEMENT_REPORT_INCOMPLETE", reason: management.errors.join("; ") };
+    if (!management.valid) return { valid: false, category: "MANAGEMENT_REPORT_INCOMPLETE", reason: management.errors.join("; "), errors: management.errors };
     // The project manager report must mention each observed employee and status.
     const absent = workflow.filter(
       (row) =>
@@ -1012,6 +1012,8 @@ export async function runDemo({
       invocation.directTask = {
         projectRoot, employeeRoot, routine: entry.routine,
         inputs: record.inputFiles, output: entry.output,
+        artifactInstructions: entry.employeeId === "project-manager" ? managementOutputTemplate() : "",
+        validationIssues: validation => validation.category === "MANAGEMENT_REPORT_INCOMPLETE" ? validation.errors : [],
         validateCandidate: candidate => validateMarkdown(candidate, entry.employeeId === "project-manager" ? promptWorkflow : null),
       };
       const result = await (
@@ -1033,7 +1035,7 @@ export async function runDemo({
         output,
         entry.employeeId === "project-manager" ? promptWorkflow : null,
       );
-      record.validation = validation;
+      record.validation = !result.ok && result.artifactValidation ? result.artifactValidation : validation;
       if (result.ok && validation.valid) {
         record.status = "completed";
         record.outputHash = hashFile(output);

@@ -190,7 +190,9 @@ function makeLegacyReceipts(f) {
 const guard = async () => ({ ok: true, verdict: "run" });
 const preflight = async () => ({ ok: true });
 
-test("Ollama direct executes all eight stages through host validation and DOCX packaging", async t => {
+for (const invalidPM of [false, true]) test(invalidPM
+  ? "Ollama direct preserves actual PM candidate validation failure in run records"
+  : "Ollama direct executes all eight stages through host validation and DOCX packaging", async t => {
   const f = fixture();
   const briefFile = path.join(f.project, "working/client-brief.json");
   const brief = fs.readFileSync(briefFile, "utf8");
@@ -221,12 +223,23 @@ test("Ollama direct executes all eight stages through host validation and DOCX p
       const outcomes = JSON.parse(system.match(/Prior observed outcomes: (\[[^\n]+\])/)[1]);
       content += "\n## Execution status\n" + outcomes.map(item => `| ${item.employeeId} | ${item.status} |`).join("\n") + "\n";
       assert.match(body.messages[1].content, /working\/evidence-register.md/);
+      assert.match(system, /Required report layout follows/);
+      if (invalidPM) content = VALID_MD;
     }
     return new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content } }], usage: { prompt_tokens: 100, completion_tokens: 50 } }));
   };
   // Use the real default executor and preflight, with only network and guards mocked.
   const result = await runDemo({ workspaceRoot: f.workspace, projectId: "TEST-001", guard });
   assert.deepEqual(seen, ROSTER.map(row => row.employeeId));
+  if (invalidPM) {
+    assert.notEqual(result.manifest.finalStatus, "completed");
+    const manager = result.manifest.agents.at(-1);
+    assert.equal(manager.validation.category, "MANAGEMENT_REPORT_INCOMPLETE");
+    assert.match(manager.validation.reason, /missing management section: Executive summary/);
+    assert.ok(!manager.validation.reason.includes("absent or unsafe"));
+    assert.equal(fs.existsSync(path.join(f.project, "working/final-agency-report.md")), false);
+    return;
+  }
   assert.equal(result.manifest.finalStatus, "completed");
   assert.ok(result.manifest.agents.every(row => row.validation.valid));
   assert.ok(fs.existsSync(path.join(f.project, "working/final-agency-report.docx")));

@@ -65,6 +65,7 @@ async function boundedResponse(response, limit) {
 export async function executeDirectOllama(settings, task, { invocation, fetchImpl = fetch } = {}) {
   const started = Date.now();
   let candidate;
+  let artifactValidation;
   try {
     const spec = invocation?.directTask;
     if (!spec || typeof spec.validateCandidate !== "function") reject("Missing host-owned task specification.");
@@ -100,6 +101,7 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
       `Trusted employee instructions:\n${JSON.stringify(instructions)}`,
       `Trusted task:\n${invocation.prompt}`,
       ...(isJson ? [briefOutputInstructions(task.projectId, spec.classificationRequired === true, sources.map(source => source.path))] : []),
+      ...(spec.artifactInstructions ? [spec.artifactInstructions] : []),
     ].join("\n\n");
     const response = await fetchImpl(`${base.href.replace(/\/+$/, "")}/chat/completions`, {
       method: "POST",
@@ -133,8 +135,9 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
     fs.writeFileSync(candidate, text + "\n", { flag: "wx", mode: 0o600 });
     const validation = spec.validateCandidate(candidate);
     if (!validation.valid) {
-      const issues = isJson ? safeBriefValidationIssues(validation) : [];
+      const issues = isJson ? safeBriefValidationIssues(validation) : (spec.validationIssues?.(validation) || []).slice(0, 20);
       const detail = issues.length ? ` ${issues.join("; ")}.` : "";
+      artifactValidation = { valid: false, category: validation.category || "DIRECT_OUTPUT_INVALID", reason: issues.join("; ") || "Generated candidate failed its output contract." };
       reject(`Artifact did not satisfy its output contract (${validation.category || "invalid"}).${detail}`, "DIRECT_OUTPUT_INVALID");
     }
     boundedPath(projectRoot, output, false);
@@ -149,6 +152,7 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
     const code = error.name === "TimeoutError" || error.name === "AbortError" ? "DIRECT_TIMEOUT" : error.code || "DIRECT_EXECUTOR";
     const safe = /^(DIRECT_|OLLAMA_HTTP_|OUTPUT_INVALID_JSON)/.test(code) ? error.message : "Direct executor could not complete the bounded artifact operation.";
     return { ok: false, executor: "ollama-direct", spawnSucceeded: false, exitCode: 1, code,
+      ...(artifactValidation ? { artifactValidation } : {}),
       stdoutBytes: 0, stderrBytes: 0, stderrSummary: safe, error: safe,
       timedOut: code === "DIRECT_TIMEOUT", durationMs: Date.now() - started };
   } finally {
