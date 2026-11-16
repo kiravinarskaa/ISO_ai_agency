@@ -14,6 +14,7 @@ import crypto from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { startGroqResponsesProxy } from "./groq-responses-proxy.mjs";
+import { usesDirectOllama, directWritePreflight, executeDirectOllama } from "./ollama-direct.mjs";
 
 // Remember this module's absolute filename so the default workspace is independent
 // of the folder from which the user launches Node.js.
@@ -620,12 +621,14 @@ function runGuard(settings, task, { dryRun = false } = {}) {
 export function validateBrief(
   projectRoot,
   projectId,
-  { classificationRequired = false } = {},
+  { classificationRequired = false, artifactPath = null } = {},
 ) {
   // Resolve real paths first so validation is about the selected project on disk.
   const canonicalProject = fs.realpathSync(projectRoot);
   const workingPath = path.join(canonicalProject, "working");
-  const filePath = path.join(workingPath, "client-brief.json");
+  const filePath = artifactPath || path.join(workingPath, "client-brief.json");
+  if (path.dirname(path.resolve(filePath)) !== path.resolve(workingPath))
+    return { valid: false, category: "OUTPUT_UNSAFE", errors: ["brief must be inside working"] };
   // Confirm the output folder itself is present and is not a symlink escape.
   if (
     !fs.existsSync(workingPath) ||
@@ -886,6 +889,13 @@ export function codexInvocation(settings, task) {
     ],
     cwd: employeeRoot,
     prompt: buildPrompt(task, settings),
+    directTask: {
+      projectRoot, employeeRoot, routine: task.routine,
+      inputs: task.inputFiles, output: task.requiredOutput,
+      validateCandidate: artifactPath => validateBrief(projectRoot, task.projectId, {
+        classificationRequired: Boolean(task.intakeStage), artifactPath,
+      }),
+    },
     env: {
       CLIENT_MANAGER_PROJECT_ID: task.projectId,
       ...(remoteOllama ? { OLLAMA_API_KEY: process.env.OLLAMA_API_KEY } : {}),
@@ -963,6 +973,8 @@ export async function spawnCodex(
 ) {
   // Allow tests to inject a process launcher; normal runs use Node's child_process.spawn.
   let invocation = suppliedInvocation || codexInvocation(settings, task);
+  if (usesDirectOllama() && spawnImpl === spawn)
+    return executeDirectOllama(settings, task, { invocation });
   let groqProxy = null;
   const provider = String(process.env.CODEX_PROVIDER || "openai").trim().toLowerCase();
   if (provider === "groq" && (spawnImpl === spawn || groqProxyFactory !== startGroqResponsesProxy)) {
@@ -1110,6 +1122,10 @@ export async function preflightCodex(
 ) {
   // The canary is written inside the selected project to verify the exact CLI sandbox grant.
   const projectRoot = projectRootFor(settings, task.projectId);
+  if (usesDirectOllama() && executor === spawnCodex) {
+    try { directWritePreflight(projectRoot); return { ok: true }; }
+    catch { fail("Direct executor host write/read preflight failed. Task was not claimed.", "PREFLIGHT_FAILED"); }
+  }
   const canary = path.join(
     projectRoot,
     "working",

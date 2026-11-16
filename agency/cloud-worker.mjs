@@ -15,6 +15,7 @@ import crypto from "node:crypto";
 import { google } from "googleapis";
 import { runDemo, ROSTER } from "./demo/run-demo.mjs";
 import { sanitizeDiagnostic } from "./orchestrator/orchestrator.mjs";
+import { usesDirectOllama } from "./orchestrator/ollama-direct.mjs";
 import {
   loadConfiguration,
   listTasks,
@@ -290,7 +291,7 @@ async function createEmployeeRows(sheets, parent, projectId, executionMode = "sy
       status: "Queued",
       resultLink: "",
       completionTime: "",
-      title: parent.title + " — " + EMPLOYEE_NAMES.get(employee.employeeId),
+      title: parent.title + " - " + EMPLOYEE_NAMES.get(employee.employeeId),
       deadline: parent.deadline,
       blockerReason: "",
       updatedAt: now,
@@ -683,6 +684,9 @@ server.listen(port, "0.0.0.0", async () => {
     return;
   }
   try {
+    console.log(usesDirectOllama()
+      ? "Agent executor: Ollama direct API; Node.js owns bounded file reads, validation and writes. No Codex sandbox required."
+      : "Agent executor: Codex CLI with workspace sandbox.");
     await fs.mkdir(WORKER_STATE_DIR, { recursive: true });
     await fs.mkdir(GMAIL_STATE_DIR, { recursive: true });
     const sheets = await makeSheetsClient();

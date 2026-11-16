@@ -21,6 +21,7 @@ import {
 } from "../orchestrator/orchestrator.mjs";
 import { inspectInstallation } from "./receipts.mjs";
 import { loadAuthorizedPublicReview } from "../integrations/gmail/public-intake-policy.mjs";
+import { usesDirectOllama, directWritePreflight } from "../orchestrator/ollama-direct.mjs";
 
 // Resolve paths from this module so the demo behaves the same from any shell folder.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -410,6 +411,10 @@ export async function restrictedPreflight(
   projectRoot,
   executor = spawnCodex,
 ) {
+  if (usesDirectOllama() && executor === spawnCodex) {
+    try { return directWritePreflight(projectRoot); }
+    catch { throw Object.assign(new Error("Direct executor host write/read preflight failed."), { code: "PREFLIGHT_FAILED" }); }
+  }
   const target = path.join(
     projectRoot,
     "working",
@@ -728,7 +733,7 @@ export async function runDemo({
         throw Object.assign(new Error(conflict), {
           code: "INSTALL_MARKER_CONFLICT",
         });
-      const guardResult = await runGuard(employeeRoot, entry, projectRoot, {
+      const guardResult = await guard(employeeRoot, entry, projectRoot, {
         dryRun,
       });
       if (!guardResult.ok) throw new Error(guardResult.reason);
@@ -771,6 +776,11 @@ export async function runDemo({
           projectRoot,
           prompt,
         );
+        invocation.directTask = {
+          projectRoot, employeeRoot, routine: entry.routine,
+          inputs: [{ path: "client-input/company-profile.md", exists: true }], output: entry.output,
+          validateCandidate: artifactPath => validateBrief(projectRoot, projectId, { artifactPath }),
+        };
         const result = await (
           executor || ((s, task, opts) => spawnCodex(s, task, opts))
         )(settings, { projectId }, { invocation });
@@ -999,12 +1009,19 @@ export async function runDemo({
         projectRoot,
         prompt,
       );
+      invocation.directTask = {
+        projectRoot, employeeRoot, routine: entry.routine,
+        inputs: record.inputFiles, output: entry.output,
+        validateCandidate: candidate => validateMarkdown(candidate, entry.employeeId === "project-manager" ? promptWorkflow : null),
+      };
       const result = await (
         // This executor call is where Codex receives the task and may invoke an AI model.
         executor || ((s, task, opts) => spawnCodex(s, task, opts))
       )(settings, { projectId }, { invocation });
       record.subprocessExitStatus = result.exitCode ?? null;
       record.process = {
+        executor: result.executor || "codex",
+        usage: result.usage || null,
         spawnSucceeded: result.spawnSucceeded ?? null,
         signal: result.signal ?? null,
         timedOut: result.timedOut ?? false,
