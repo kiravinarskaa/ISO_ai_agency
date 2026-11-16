@@ -1144,7 +1144,7 @@ export async function preflightCodex(
   if (!result.ok || !readable) {
     // Keep only the safe category, not raw Codex stdout or stderr.
     const detail = result.ok
-      ? `Codex finished but the sandbox canary could not be read back (${readbackStatus}; stdout ${result.stdoutBytes || 0} bytes; stderr ${result.stderrBytes || 0} bytes).`
+      ? `Codex finished but the sandbox canary could not be read back (${readbackStatus}; stdout ${result.stdoutBytes || 0} bytes; stderr ${result.stderrBytes || 0} bytes). ${result.stderrSummary || "No executor diagnostic available."}`
       : `${result.code || "CODEX_ERROR"}: ${result.stderrSummary || summarizeCodexStderr("")} ` +
         `(exit ${result.exitCode ?? "none"}; stderr ${result.stderrBytes || 0} bytes).`;
     fail(
