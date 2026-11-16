@@ -16,7 +16,10 @@ easy to read and change.
 - Answers task questions from the ledger itself. If a reason or result is absent
   from the Sheet, the answer says so instead of guessing.
 
-The app checks the Sheet every 15 seconds. "Active" means that an employee has
+The app reads the Sheet on opening or signing in, immediately when you return
+to its tab or browser window, and every 15 seconds while the page is visible.
+It also refreshes after the browser reconnects to the internet.
+"Active" means that an employee has
 an In Progress task recorded. The dashboard does not itself run Codex. A separate
 Railway worker can run the full eight-agent synthetic coursework workflow and
 write each stage's progress back to the Sheet. See the repository's

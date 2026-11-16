@@ -1119,14 +1119,19 @@ export async function preflightCodex(
   invocation.prompt = [
     "This is an isolated sandbox permission preflight, not customer work.",
     `Write exactly PREFLIGHT_OK to ${canary}, read it back, then stop. Do not read any other project files or write anywhere else.`,
+    "Use a filesystem or shell tool to perform the write and read. A text reply alone does not complete this check.",
   ].join("\n");
   // Ask the same executor to create and read back a harmless known string.
   const result = await executor(settings, task, { invocation });
   let readable = false;
+  let readbackStatus = "not-checked";
   try {
     // Read back the canary to prove the process could write in the permitted project.
-    readable = fs.readFileSync(canary, "utf8") === "PREFLIGHT_OK";
-  } catch {
+    readable = fs.readFileSync(canary, "utf8").replace(/^\uFEFF/, "").trim() === "PREFLIGHT_OK";
+    readbackStatus = readable ? "matched" : "content-mismatch";
+  } catch (error) {
+    readbackStatus = error.code === "ENOENT" ? "file-not-created"
+      : error.code === "EACCES" || error.code === "EPERM" ? "read-denied" : "read-error";
     /* a failed read/write check blocks before task claim */
   } finally {
     try {
@@ -1139,7 +1144,7 @@ export async function preflightCodex(
   if (!result.ok || !readable) {
     // Keep only the safe category, not raw Codex stdout or stderr.
     const detail = result.ok
-      ? "Codex finished but the sandbox canary could not be read back."
+      ? `Codex finished but the sandbox canary could not be read back (${readbackStatus}; stdout ${result.stdoutBytes || 0} bytes; stderr ${result.stderrBytes || 0} bytes).`
       : `${result.code || "CODEX_ERROR"}: ${result.stderrSummary || summarizeCodexStderr("")} ` +
         `(exit ${result.exitCode ?? "none"}; stderr ${result.stderrBytes || 0} bytes).`;
     fail(

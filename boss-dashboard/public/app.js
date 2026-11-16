@@ -521,7 +521,19 @@ api("/api/tasks").then(async (result) => {
   renderAll();
 });
 
-// Refresh the shared ledger so employee updates appear without a full reload.
-setInterval(async () => {
-  if (!$("#dashboard-view").hidden) await loadTasks();
-}, 15_000);
+// Refresh immediately when the Boss returns, including browser back/forward
+// restoration. loadTasks prevents overlapping requests from these events.
+function refreshVisibleDashboard() {
+  if (document.visibilityState === "hidden" || $("#dashboard-view").hidden) return;
+  return loadTasks();
+}
+
+document.addEventListener("visibilitychange", refreshVisibleDashboard);
+window.addEventListener("focus", refreshVisibleDashboard);
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) refreshVisibleDashboard();
+});
+window.addEventListener("online", refreshVisibleDashboard);
+
+// Keep the shared ledger current while the dashboard remains open.
+setInterval(refreshVisibleDashboard, 15_000);
