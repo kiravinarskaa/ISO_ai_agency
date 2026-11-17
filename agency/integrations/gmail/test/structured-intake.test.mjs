@@ -15,6 +15,11 @@ test('recovers explicit prose scope without inventing controls or changing exist
  assert.equal(repairStructuredIntake(root,brief),true);
  assert.equal(brief.scope,`Unverified client statement (client-input/gmail-intake.json): ${sentence}`);
  assert.equal(repairStructuredIntake(root,brief),false);
+ fs.writeFileSync(file,JSON.stringify({bodyText:`We provide online training. The proposed scope includes our learning\nplatform, customer support, HR, and supporting IT operations. We aim to prepare within six months.`}));
+ brief.scope='Unverified client statement (client-input/gmail-intake.json): The proposed scope includes our learning';
+ assert.equal(repairStructuredIntake(root,brief),true);
+ assert.equal(brief.scope,`Unverified client statement (client-input/gmail-intake.json): ${sentence}`);
+ assert.equal(repairStructuredIntake(root,brief),false);
  brief.scope='Existing client-provided scope';
  assert.equal(repairStructuredIntake(root,brief),false);
  assert.equal(brief.scope,'Existing client-provided scope');

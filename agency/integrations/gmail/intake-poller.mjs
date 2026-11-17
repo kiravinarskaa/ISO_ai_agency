@@ -53,7 +53,7 @@ function safeLine(value, max = 500) {
     .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return clean.length > max ? `${clean.slice(0, max - 1)}:` : clean;
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
 }
 
 /** Validate polling interval, allowed mailbox aliases, and message-size bound. */
@@ -2250,13 +2250,21 @@ export function repairStructuredIntake(stageRoot, brief) {
   let changed = false;
   // Preserve an explicit scope sentence verbatim. Do not infer a scope from
   // system names, requests for clarification, or conflicting scope statements.
-  if (brief.scope == null || (typeof brief.scope === "string" && !brief.scope.trim())) {
-    const statements = lines.flatMap(line => line.split(/(?<=[.!?])\s+(?=[A-Z])/))
+  if (brief.scope == null || (typeof brief.scope === "string" && (!brief.scope.trim() || brief.scope.startsWith(generatedPrefix)))) {
+    // Email plain text may hard-wrap in the middle of a scope sentence. Join
+    // soft line breaks, retaining paragraph and labelled-field boundaries.
+    const paragraphs = text.replace(/\r\n?/g, "\n")
+      .split(/\n\s*\n|\n(?=[ \t]*(?:[-*•]|[A-Za-z][A-Za-z ]{0,35}:))/)
+      .map(value => value.replace(/\n[ \t]*/g, " ").trim());
+    const statements = paragraphs.flatMap(line => line.split(/(?<=[.!?])\s+(?=[A-Z])/))
       .filter(line => /^(?:the\s+)?(?:(?:proposed|assessment|requested)\s+)?scope\s*(?::|(?:includes|covers|is|comprises)\b)/i.test(line)
         && line.length <= 2000 && !request(line)
         && !/\b(?:not defined|not agreed|not determined|to be determined|TBD|none)\b/i.test(line));
     if (statements.length === 1 && /\b[a-z]{3,}\b/i.test(statements[0].replace(/^.*?(?::|\b(?:includes|covers|is|comprises)\b)/i, ""))) {
-      brief.scope = generatedPrefix + statements[0];
+      const recovered = generatedPrefix + statements[0];
+      if (brief.scope !== recovered) { brief.scope = recovered; changed = true; }
+    } else if (typeof brief.scope === "string" && brief.scope.startsWith(generatedPrefix)) {
+      brief.scope = null;
       changed = true;
     }
   }

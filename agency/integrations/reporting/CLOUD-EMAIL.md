@@ -31,7 +31,7 @@ Boss address is supplied explicitly by the operator. A scope-limited sending
 grant is separate from the existing read-only intake grant. Intake continues
 read-only. This does not implement the separate coursework daily summary email.
 
-## Railway variables - agent-worker only
+## Railway variables — agent-worker only
 
 | Variable | Value |
 | --- | --- |
