@@ -184,6 +184,14 @@ more than the free credit. Review Railway usage before enabling a worker service
 
 # Conversational AI chat
 
+Live dashboard progress polls every three seconds while visible. Task snapshots
+are shared across browsers for two seconds; Task Ledger and Ledger are fetched
+in a single batch read. Archive history uses a separate 30-second cache. Archive
+mutations still re-read current task states and invalidate both caches. Worker
+stage callbacks already persist start/completion states; no worker change is
+needed. Polling may skip stages shorter than the refresh interval and is not a
+guarantee of observing every intermediate state.
+
 Chat also reads Ledger, Task Ledger, Chat History, Run Outputs, Dashboard Archives,
 and Email Delivery across the configured spreadsheet, independently of UI scope.
 A metadata lookup discovers existing tabs; one values.batchGet reads them without

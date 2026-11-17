@@ -8,6 +8,7 @@ import { taskAnswer } from "./task-answers.mjs";
 import { createReadCache } from "./read-cache.mjs";
 import { answerWithOllama } from "./ai-chat.mjs";
 import { readChatWorkbook } from "./sheet-chat-context.mjs";
+import { readTaskSnapshot } from "./task-snapshot.mjs";
 const workbookReads = createReadCache({ ttl: 60_000 });
 const tabChecks = createReadCache({ ttl: 600_000 });
 const chatReads = createReadCache();
@@ -193,24 +194,15 @@ function isWebLink(value) {
 }
 
 async function getTasks() {
-  const rows = await readRows(TASK_TAB, TASK_HEADERS);
+  const sheets = await getSheetsClient();
+  await ensureTab(sheets, TASK_TAB, TASK_HEADERS);
+  const includeLedger = await tabChecks.read(spreadsheetId() + ':ledger-present', async () => {
+    const book = await sheets.spreadsheets.get({ spreadsheetId: spreadsheetId(), fields: 'sheets.properties.title' });
+    return (book.data.sheets || []).some(s => s.properties?.title === EXECUTION_LEDGER_TAB);
+  });
+  const { rows, executionRows } = await readTaskSnapshot(sheets, spreadsheetId(), includeLedger);
   const assignedTasks = rows.map(taskFromRow).filter((task) => task.taskId);
-  let executionTasks = [];
-
-  // The agency runner publishes employee stages to the original Ledger tab.
-  // Read it separately so a missing or malformed execution tab cannot stop
-  // the dashboard's normal Task Ledger from loading.
-  try {
-    const sheets = await getSheetsClient();
-    const result = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId(),
-      range: quoteTab(EXECUTION_LEDGER_TAB) + "!A1:H",
-    });
-    executionTasks = executionLedgerToTasks(result.data.values || []);
-  } catch (error) {
-    // Do not let a missing execution tab interfere with normal task loading.
-    console.warn("Google Sheet execution progress is unavailable.");
-  }
+  const executionTasks = executionLedgerToTasks(executionRows);
 
   // Keep tasks manually assigned in Task Ledger and show workflow progress
   // from Ledger in the same employee cards and task list.
@@ -770,10 +762,11 @@ function missingSheetSettings() {
 
 export function createDashboardHandler(services = {}) {
 const dependencies = { loadTasks: getTasks, loadEvents: readArchiveEvents, appendEvents: appendArchiveEvents, ...services };
-const snapshotReads = createReadCache();
+const snapshotReads = createReadCache({ ttl: 2_000, now: services.now || Date.now });
+const archiveReads = createReadCache({ ttl: 30_000, now: services.now || Date.now });
 const cachedDependencies = { ...dependencies,
   loadTasks: () => snapshotReads.read('tasks', dependencies.loadTasks),
-  loadEvents: () => snapshotReads.read('events', dependencies.loadEvents),
+  loadEvents: () => archiveReads.read('events', dependencies.loadEvents),
 };
 return async (request, response) => {
   try {
@@ -788,11 +781,11 @@ return async (request, response) => {
       // Archive writes retain fresh status checks. Chat can reuse the same
       // short-lived snapshot as polling; other writes invalidate that snapshot.
       const mutation = request.method !== 'GET' && url.pathname !== '/api/chat';
-      if (mutation) snapshotReads.clear();
+      if (mutation) { snapshotReads.clear(); archiveReads.clear(); }
       try {
         await handleApi(request, response, url, mutation ? dependencies : cachedDependencies);
       } finally {
-        if (mutation) snapshotReads.clear();
+        if (mutation) { snapshotReads.clear(); archiveReads.clear(); }
       }
       return;
     }

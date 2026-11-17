@@ -775,4 +775,4 @@ window.addEventListener("pageshow", (event) => {
 window.addEventListener("online", refreshVisibleDashboard);
 
 // Keep the shared ledger current while the dashboard remains open.
-setInterval(refreshVisibleDashboard, 15_000);
+setInterval(refreshVisibleDashboard, 3_000);
