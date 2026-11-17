@@ -43,6 +43,8 @@ export function executionRowToTask(row) {
   const finished = status === "Completed" || status === "Blocked";
   return {
     taskId: `workflow:${runId}:${employeeId}`,
+    runId,
+    executionStatus,
     timestamp: timestamp || "",
     assignedBy: "Email intake workflow",
     employeeId,
