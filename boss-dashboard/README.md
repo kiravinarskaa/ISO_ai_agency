@@ -184,6 +184,15 @@ more than the free credit. Review Railway usage before enabling a worker service
 
 # Conversational AI chat
 
+Chat also reads Ledger, Task Ledger, Chat History, Run Outputs, Dashboard Archives,
+and Email Delivery across the configured spreadsheet, independently of UI scope.
+A metadata lookup discovers existing tabs; one values.batchGet reads them without
+creating missing tabs. Workbook reads share a 60-second cache. All rows are read;
+question-ranked evidence sent to the model is limited to 16,000 characters per tab.
+Tab availability, total/included row counts and truncation are disclosed to the
+model. Answers are instructed to cite tab names and original row numbers. The
+model has read-only context and cannot modify the sheet or send mail.
+
 Ask the team uses Ollama for natural language answers from the selected dashboard
 task scope and the last six conversation messages. Project Manager covers all
 roles; specialists see their own task records. No action tools are provided.
