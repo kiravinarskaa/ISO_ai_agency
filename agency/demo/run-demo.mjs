@@ -706,7 +706,10 @@ export async function runDemo({
     briefStatus.installationMarkerReview = error.message;
   }
   // A valid pre-existing brief satisfies the first workflow stage without a subprocess.
-  if (briefValidation.valid) briefStatus.status = "reused-validated";
+  if (briefValidation.valid) {
+    briefStatus.status = "reused-validated";
+    briefStatus.outputHash = hashFile(path.join(projectRoot, "working/client-brief.json"));
+  }
   else {
     const entry = ROSTER[0];
     const employeeRoot = path.resolve(workspaceRoot, entry.workspaceRoot);

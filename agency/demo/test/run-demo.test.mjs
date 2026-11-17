@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { ROSTER, runDemo, runGuard } from "../run-demo.mjs";
 import { inspectInstallation, kitHash } from "../receipts.mjs";
 import { migrateWorkspace } from "../migrate-receipts.mjs";
+import { prepareValidatedReport } from "../../integrations/reporting/cloud-email-delivery.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -429,6 +430,10 @@ test("live mock executes in dependency order and passes project-only write grant
     );
     assert.ok(seen.every((row) => !row.args.includes("--ignore-user-config")));
     assert.equal(result.manifest.finalStatus, "completed");
+    assert.match(result.manifest.agents[0].outputHash, /^[a-f0-9]{64}$/);
+    const deliveryReport = prepareValidatedReport(f.project, "TEST-001", path.relative(f.project, result.manifestPath).split(path.sep).join("/"));
+    assert.equal(deliveryReport.name, "ISO27001-readiness-report.docx");
+    assert.equal(deliveryReport.data[0], 0x50);
     assert.equal(
       result.manifest.agents.at(-1).outputPath,
       path.join(f.project, "working/final-agency-report.md"),

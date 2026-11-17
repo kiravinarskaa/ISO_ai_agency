@@ -16,6 +16,7 @@ import { google } from "googleapis";
 import { runDemo, ROSTER } from "./demo/run-demo.mjs";
 import { sanitizeDiagnostic } from "./orchestrator/orchestrator.mjs";
 import { usesDirectOllama } from "./orchestrator/ollama-direct.mjs";
+import { emailDeliveryConfig, createCloudEmailDelivery } from "./integrations/reporting/cloud-email-delivery.mjs";
 import {
   loadConfiguration,
   listTasks,
@@ -51,6 +52,34 @@ const POLL_MS = Number.isFinite(configuredPollMs)
 const REPORT_CELL_LIMIT = 45_000;
 const GMAIL_POLL_MS = Math.max(15_000, Number(process.env.GMAIL_POLL_MS || 60_000));
 let lastGmailPollAt = 0;
+let emailDelivery;
+const EMAIL_STATUS_TAB = "Email Delivery";
+const EMAIL_STATUS_HEADERS = ["Project ID", "Customer receipt", "Boss intake notice", "Customer report (Boss CC)", "Updated At"];
+const emailStatusCache = new Map();
+
+async function flushEmailDelivery() {
+  if (!emailDelivery?.enabled) return;
+  try { await emailDelivery.flush(); }
+  catch { workerLog("Email delivery could not process its durable queue; check delivery state on the volume."); }
+}
+
+async function recordEmailDelivery(sheets, projectId) {
+  if (!emailDelivery?.enabled) return;
+  try {
+  const status = emailDelivery.status(projectId);
+  const values = [projectId, status.states["customer-receipt"] || "not queued", status.states["boss-intake"] || "not queued", status.states["customer-report"] || "not queued"];
+  if (!Object.keys(status.states).length || emailStatusCache.get(projectId) === JSON.stringify(values)) return;
+  const existing = await sheets.spreadsheets.values.get({ spreadsheetId: spreadsheetId(), range: quotedTab(EMAIL_STATUS_TAB) + "!A2:E" });
+  const index = (existing.data.values || []).findIndex(row => row[0] === projectId);
+  const requestBody = { values: [[...values, new Date().toISOString()]] };
+  if (index >= 0) await sheets.spreadsheets.values.update({ spreadsheetId: spreadsheetId(), range: quotedTab(EMAIL_STATUS_TAB) + `!A${index + 2}:E${index + 2}`, valueInputOption: "RAW", requestBody });
+  else await sheets.spreadsheets.values.append({ spreadsheetId: spreadsheetId(), range: quotedTab(EMAIL_STATUS_TAB) + "!A:E", valueInputOption: "RAW", insertDataOption: "INSERT_ROWS", requestBody });
+  // Record delivery separately: assessment status and original blocker remain intact.
+  emailStatusCache.set(projectId, JSON.stringify(values));
+  } catch {
+    workerLog("Email delivery status could not be published; durable send records remain on the volume.");
+  }
+}
 
 // These headings match the dashboard. New fields are appended so older rows
 // and the original agency Ledger tab are left as they are.
@@ -519,6 +548,12 @@ async function runEligibleEmailProject(sheets, settings, parent, projectId, path
       parent.blockerReason = "";
     }
     await updateTask(sheets, parent);
+    if (result.manifest.finalStatus === "completed" && emailDelivery?.enabled) {
+      try { emailDelivery.queueReport(projectId, result.manifestPath); }
+      catch (error) { workerLog(`Report delivery held; ${error.code || "EMAIL_REPORT_INVALID"}.`); }
+      await flushEmailDelivery();
+      await recordEmailDelivery(sheets, projectId);
+    }
     workerLog(`Email assessment finished; project ${projectId}; outcome ${result.manifest.finalStatus}.`);
     return result.manifest.finalStatus === "completed";
   } catch (error) {
@@ -551,6 +586,11 @@ async function processEmailIntake(sheets) {
   } else {
     const newCount = poll.results?.filter((row) => row.outcome === "staged_for_classification").length || 0;
     if (newCount) workerLog(`New inquiry staged: ${newCount}.`);
+    for (const row of poll.results || []) {
+      if (row.outcome !== "staged_for_classification" || !row.stagingProjectId || !emailDelivery?.enabled) continue;
+      try { emailDelivery.queueIntake(row.stagingProjectId); }
+      catch (error) { workerLog(`Intake email delivery held; ${error.code || "EMAIL_SOURCE_INVALID"}.`); }
+    }
   }
 
   const pending = listTasks(settings, "pending").filter((task) =>
@@ -558,6 +598,9 @@ async function processEmailIntake(sheets) {
     task.routine === "client-intake" && task.projectId.startsWith("INTAKE-"),
   );
   for (const task of pending) await ensureEmailTaskRow(sheets, task);
+  // Receipt and full Boss intake notice do not wait for AI classification.
+  await flushEmailDelivery();
+  for (const task of pending) await recordEmailDelivery(sheets, task.projectId);
 
   await dispatchPendingTasks(settings, {
     executeTask: async (currentSettings, { taskId }) => {
@@ -643,6 +686,14 @@ async function pollQueue(sheets) {
       await processJob(sheets, job);
     }
     await processEmailIntake(sheets);
+    // Recover a validated report if the process exited between generation and enqueue.
+    // Only requests with this policy's intake events are eligible, not old history.
+    emailDelivery?.recoverReports();
+    await flushEmailDelivery();
+    if (emailDelivery?.enabled) {
+      const projectIds = new Set((await readTasks(sheets)).filter(task => task.projectId?.startsWith("INTAKE-")).map(task => task.projectId));
+      for (const projectId of projectIds) await recordEmailDelivery(sheets, projectId);
+    }
   } catch (error) {
     console.error("Queue check failed:", sanitizeDiagnostic(error.message));
   } finally {
@@ -687,6 +738,16 @@ server.listen(port, "0.0.0.0", async () => {
     return;
   }
   try {
+    try {
+      const deliveryConfig = emailDeliveryConfig();
+      emailDelivery = createCloudEmailDelivery({ projectsRoot: PROJECTS_DIR,
+        stateRoot: path.join(WORKER_STATE_DIR, "email-delivery"), config: deliveryConfig,
+        log: result => workerLog(`Email ${result.kind}: ${result.status}${result.code ? " (" + result.code + ")" : ""}.`) });
+      console.log(deliveryConfig.enabled ? "Cloud email delivery enabled: customer receipt, Boss request details, and validated customer report with Boss CC."
+        : "Cloud email delivery disabled. Set EMAIL_DELIVERY_ENABLED=true and configure BOSS_EMAIL plus the separate Gmail sending grant.");
+    } catch (error) {
+      console.error("Cloud email delivery disabled:", error.code || "EMAIL_CONFIG_INVALID");
+    }
     console.log(usesDirectOllama()
       ? "Agent executor: Ollama direct API; Node.js owns bounded file reads, validation and writes. No Codex sandbox required."
       : "Agent executor: Codex CLI with workspace sandbox.");
@@ -695,12 +756,13 @@ server.listen(port, "0.0.0.0", async () => {
     const sheets = await makeSheetsClient();
     await ensureTab(sheets, TASK_TAB, TASK_HEADERS);
     await ensureOutputsTab(sheets);
+    if (emailDelivery?.enabled) await ensureTab(sheets, EMAIL_STATUS_TAB, EMAIL_STATUS_HEADERS);
     console.log("Google Sheet queue connected; checking for queued work.");
     if (process.env.EMAIL_INTAKE_ENABLED === "true") {
       if (!process.env.GMAIL_OAUTH_CREDENTIALS_JSON || !process.env.GMAIL_OAUTH_TOKENS_JSON) {
         console.error("Email intake remains off: add the Gmail OAuth credentials and token JSON variables.");
       } else {
-        console.log("Read-only Gmail intake enabled; outbound customer email is disabled in this worker.");
+        console.log("Read-only Gmail intake enabled; outbound delivery uses its separately configured sending grant.");
       }
     }
     await pollQueue(sheets);
