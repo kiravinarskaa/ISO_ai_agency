@@ -56,6 +56,22 @@ token or expand the intake token's scope. If no usable sending grant exists,
 perform the existing reporting send authorization flow for the agency mailbox.
 No key, token or customer body is logged by this feature.
 
+If Google rejects the sending refresh token, run on the local PC:
+
+```powershell
+node agency/integrations/reporting/reporting.mjs authorize-send-isolated
+```
+
+Open the printed consent URL and sign in to the agency mailbox. This reads the
+existing `private/gmail-send-credentials.json` in place and saves the new token
+in a fresh protected `state/send-authorization-*/gmail-send-tokens.json` path
+printed on success. It does not move, overwrite, scan or change permissions of
+existing private-directory files. Copy the new token into Railway's
+`GMAIL_SEND_OAUTH_TOKENS_JSON` privately, retaining the matching sending client.
+The state directory is ignored by Git. Existing local integrations continue to
+use their existing files; this command does not switch them to the new token.
+No email is sent by authorization.
+
 To check configuration without sending, reading the mailbox or invoking AI:
 
 ```bash

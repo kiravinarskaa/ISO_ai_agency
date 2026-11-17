@@ -1176,10 +1176,24 @@ export function authenticate(kind) {
 }
 
 /** Run the local OAuth authorization flow for one reporting integration grant. */
-export async function authorize(kind) {
+export function prepareIsolatedSendStorage({ stateRoot = STATE, credentialsPath = path.join(PRIVATE, "gmail-send-credentials.json"), secureStorage = securePrivateStorage } = {}) {
+  // Read the existing client in place; never scan, move, replace or chmod its directory.
+  assertNoSymlinks(credentialsPath);
+  if (!fs.statSync(credentialsPath).isFile()) fail("CREDENTIALS", "Sending OAuth client must be a regular file.");
+  fs.mkdirSync(stateRoot, { recursive: true, mode: 0o700 });
+  assertNoSymlinks(stateRoot);
+  const storageDir = fs.mkdtempSync(path.join(stateRoot, "send-authorization-"));
+  secureStorage(storageDir);
+  return { storageDir, credentialsPath, tokensPath: path.join(storageDir, "gmail-send-tokens.json") };
+}
+
+export async function authorize(kind, { isolated = false } = {}) {
   // Run local browser consent for one specific reporting permission set.
-  const [credentialsPath, tokensPath, scopes] = authPaths(kind);
-  securePrivateStorage(PRIVATE);
+  const [credentialsPath, defaultTokensPath, scopes] = authPaths(kind);
+  if (isolated && kind !== "send") fail("AUTH_KIND", "Isolated renewal supports sending authorization only.");
+  const storage = isolated ? prepareIsolatedSendStorage({ credentialsPath }) : { storageDir: PRIVATE, tokensPath: defaultTokensPath };
+  const { storageDir, tokensPath } = storage;
+  if (!isolated) securePrivateStorage(PRIVATE);
   if (fs.existsSync(tokensPath))
     fail(
       "TOKEN_EXISTS",
@@ -1268,10 +1282,11 @@ export async function authorize(kind) {
         "Google did not grant the exact required scope and reusable refresh token.",
       );
     createJsonExclusive(tokensPath, result.tokens);
-    securePrivateStorage(PRIVATE);
+    securePrivateStorage(storageDir);
     process.stdout.write(
       `Dedicated ${kind} authorization saved in the protected reporting directory.\n`,
     );
+    if (isolated) process.stdout.write(`New sending token saved at: ${tokensPath}\nExisting credential and token files were not modified.\n`);
   } catch (e) {
     if (e instanceof ReportingError) throw e;
     fail(
@@ -1947,6 +1962,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   if (command === "authorize-sheets") return authorize("sheets");
   if (command === "authorize-send") return authorize("send");
+  if (command === "authorize-send-isolated") return authorize("send", { isolated: true });
   if (command === "authorize-customer-send") return authorize("customer-send");
   if (command === "setup-demo-policy") {
     if (opts["attest-agency-owned"] !== "true")
