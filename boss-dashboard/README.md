@@ -1,5 +1,21 @@
 # ISO 27001 AI Agency Boss Dashboard
 
+## Navigation redesign
+
+`feature/dashboard-navigation` adds separate Overview, Client requests, Projects
+& tasks, Team, Reports and History views. Ask the team and task assignment remain
+available. Hash routes support direct links and browser back/forward; old
+`#employees` and `#tasks` bookmarks map to their new views.
+
+The Team view is a compact eight-row table with expandable earlier-work details.
+Project cards open the matching task scope, email inquiries have their own list,
+and completed PM report links appear under Reports. All lists use existing task
+records; they do not claim email delivery or report availability without data.
+Archive previews, login, task edits and automatic refresh keep their existing
+behavior. Only deploy the existing public ISO_ai_agency service to this UI branch;
+agent-worker can remain on feature/dashboard-recovery-sync. No new variables,
+domain or service are required. Browser visual verification remains pending.
+
 ## Completed recovery runs
 
 The worker now reconciles an existing email workflow's Sheet rows after a manual

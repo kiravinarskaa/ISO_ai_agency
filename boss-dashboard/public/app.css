@@ -15,6 +15,51 @@
   color: var(--text);
 }
 
+/* Workspace navigation and compact operational views. */
+.nav-caption { margin: 22px 12px 7px; color: #708398; font-size: .61rem; letter-spacing: .17em; font-weight: 750; }
+.nav-link { display: flex; align-items: center; gap: 12px; min-height: 44px; border: 1px solid transparent; }
+.nav-link > span { width: 19px; text-align: center; color: #738ba2; font-size: 1.12rem; }
+.nav-link.active { background: #17352f; border-color: #2b544a; color: #8ef0d6; }
+.nav-link.active > span { color: #8ef0d6; }
+.page-subtitle { color: var(--muted); font-size: .87rem; margin: 8px 0; line-height: 1.55; }
+.topbar { align-items: center; }
+.topbar .eyebrow { color: #8198ad; }
+.topbar h1 { font-weight: 650; }
+.activity-heading { margin-top: 32px; }
+.inline-link { color: var(--mint); font-size: .78rem; text-decoration: none; }
+.inline-link:hover { text-decoration: underline; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.team-table { border-collapse: collapse; width: 100%; min-width: 820px; text-align: left; }
+.team-table th, .team-table td { padding: 19px 18px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.team-table thead th { padding-top: 13px; padding-bottom: 13px; color: #8094aa; font-size: .64rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 600; background: #101c2b; }
+.team-table tbody th { width: 28%; font-size: .8rem; font-weight: 600; }
+.team-table tr:last-child th, .team-table tr:last-child td { border-bottom: 0; }
+.team-table tbody tr:hover { background: #182638; }
+.team-person { display: flex; align-items: center; gap: 12px; }
+.team-person small, .team-total small { display: block; margin-top: 5px; color: #7e94aa; font-size: .66rem; font-weight: 400; }
+.employee-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid #2f4b50; border-radius: 10px; color: #7bd5be; background: #163332; font-size: .66rem; letter-spacing: .03em; }
+.team-latest { width: 33%; color: #a7b8cd; font-size: .76rem; line-height: 1.6; }
+.team-total { font-size: 1.1rem; font-weight: 650; }
+.earlier-work { min-width: 100px; max-width: 240px; color: var(--muted); font-size: .73rem; }
+.earlier-work summary { cursor: pointer; color: #d9b77f; white-space: nowrap; }
+.earlier-work ul { padding-left: 15px; font-size: .7rem; line-height: 1.6; }
+.project-list { display: grid; gap: 10px; }
+.project-row { display: flex; align-items: center; gap: 18px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.project-symbol { width: 40px; height: 42px; flex: 0 0 40px; display: grid; place-items: center; color: var(--mint); background: #153332; border-radius: 10px; font-size: 1.3rem; }
+.project-info { flex: 1; min-width: 0; }
+.project-info strong, .project-info small, .project-info > span { display: block; overflow-wrap: anywhere; }
+.project-info strong { font-size: .87rem; font-weight: 600; }
+.project-info small { color: #8099b0; font-family: ui-monospace, Consolas, monospace; font-size: .65rem; margin-top: 6px; }
+.project-info > span { color: var(--muted); font-size: .7rem; margin-top: 8px; }
+@media (max-width: 760px) {
+  .main-nav .nav-caption { display: none; }
+  .main-nav .nav-link { min-height: 40px; gap: 6px; }
+  .project-row { padding: 16px; flex-wrap: wrap; gap: 12px; }
+  .project-info { flex-basis: calc(100% - 70px); }
+  .project-row .button { margin-left: auto; }
+  .team-table th, .team-table td { padding: 15px 14px; }
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; background: var(--page); }
 button, input, select, textarea { font: inherit; }
@@ -196,3 +241,8 @@ dialog p, dialog li { line-height: 1.5; font-size: .85rem; }
   .chat-controls label { min-width: 0; }
   .bar-row { grid-template-columns: minmax(90px, 1fr) 1fr 24px; }
 }
+/* Final workspace accents override the legacy menu defaults. */
+.main-nav .nav-link.active { background: #17352f; border-color: #2b544a; color: #8ef0d6; }
+.main-nav .nav-link:hover { background: #1b2d3b; }
+.topbar { align-items: center; }
+@media (max-width: 760px) { .main-nav .nav-caption { display: none; } }

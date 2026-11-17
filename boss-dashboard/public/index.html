@@ -32,11 +32,15 @@
           <span><strong>ISO Agency</strong><small>Boss Command Center</small></span>
         </a>
         <nav class="main-nav" aria-label="Main navigation">
-          <a class="nav-link active" href="#overview">Overview</a>
-          <a class="nav-link" href="#tasks">Task board</a>
-          <a class="nav-link" href="#employees">Employees</a>
-          <a class="nav-link" href="#reports">Reports</a>
-          <a class="nav-link" href="#chat">Ask the PM</a>
+          <p class="nav-caption">WORKSPACE</p>
+          <a id="nav-overview" class="nav-link active" href="#overview"><span aria-hidden="true">◫</span> Overview</a>
+          <a id="nav-requests" class="nav-link" href="#requests"><span aria-hidden="true">✉</span> Client requests</a>
+          <a id="nav-projects" class="nav-link" href="#projects"><span aria-hidden="true">▤</span> Projects & tasks</a>
+          <a id="nav-team" class="nav-link" href="#team"><span aria-hidden="true">♧</span> Team</a>
+          <a id="nav-reports" class="nav-link" href="#reports"><span aria-hidden="true">▥</span> Reports</a>
+          <p class="nav-caption">REVIEW</p>
+          <a id="nav-history" class="nav-link" href="#history"><span aria-hidden="true">↺</span> History</a>
+          <a id="nav-chat" class="nav-link" href="#chat"><span aria-hidden="true">◇</span> Ask the team</a>
         </nav>
         <div class="sidebar-bottom">
           <span class="connection-dot"></span>
@@ -49,15 +53,16 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">AGENCY OPERATIONS</p>
-            <h1>Good day, Boss</h1>
+            <h1 id="page-title" tabindex="-1">Overview</h1>
+            <p id="page-subtitle" class="page-subtitle">Your agency, at a glance.</p>
             <p id="today-label" class="muted"></p>
           </div>
-          <button class="button primary" id="jump-to-assign">+ Assign a task</button>
+          <button class="button primary" id="jump-to-assign">＋ Assign a task</button>
         </header>
 
         <div id="page-error" class="notice error" role="alert" hidden></div>
 
-        <section class="scope-panel" aria-label="Dashboard view">
+        <section id="scope-panel" class="scope-panel" aria-label="Dashboard view">
           <div class="scope-topline">
             <div class="view-switch" role="group" aria-label="Current work or history">
               <button type="button" id="view-current" aria-pressed="true">Current</button>
@@ -101,19 +106,32 @@
             <span class="updated-label" id="updated-label">Waiting for ledger data</span>
           </div>
           <div class="metric-grid">
-            <article class="metric-card"><span>Queued</span><strong id="count-queued">-</strong><small>Waiting to start</small></article>
-            <article class="metric-card"><span>Recent progress</span><strong id="count-progress">-</strong><small id="progress-note">Updated within 2 hours</small></article>
-            <article class="metric-card"><span>Blocked</span><strong id="count-blocked">-</strong><small>Needs attention</small></article>
-            <article class="metric-card"><span>Completed today</span><strong id="count-completed">-</strong><small>Recorded in the ledger</small></article>
+            <article class="metric-card"><span>Queued</span><strong id="count-queued">—</strong><small>Waiting to start</small></article>
+            <article class="metric-card"><span>Recent progress</span><strong id="count-progress">—</strong><small id="progress-note">Updated within 2 hours</small></article>
+            <article class="metric-card"><span>Blocked</span><strong id="count-blocked">—</strong><small>Needs attention</small></article>
+            <article class="metric-card"><span>Completed today</span><strong id="count-completed">—</strong><small>Recorded in the ledger</small></article>
           </div>
+          <div class="section-heading activity-heading"><div><p class="eyebrow">LATEST ACTIVITY</p><h2>Recent projects</h2></div><a class="inline-link" href="#projects">View projects →</a></div>
+          <div id="recent-projects" class="project-list"></div>
+        </section>
+
+        <section id="requests" class="section-block" hidden>
+          <div class="section-heading"><div><p class="eyebrow">INCOMING WORK</p><h2>Client requests</h2></div><span id="request-count" class="muted"></span></div>
+          <p class="muted">Email inquiries recorded by Client Manager. Open a request to review its workflow and tasks.</p>
+          <div id="request-list" class="project-list"></div>
+        </section>
+
+        <section id="projects" class="section-block" hidden>
+          <div class="section-heading"><div><p class="eyebrow">ASSESSMENT WORKFLOWS</p><h2 id="projects-heading">Projects</h2></div></div>
+          <div id="project-list" class="project-list"></div>
         </section>
 
         <section id="employees" class="section-block">
           <div class="section-heading">
-            <div><p class="eyebrow">THE 7 + 1 TEAM</p><h2>Employee status</h2></div>
+            <div><p class="eyebrow">SEVEN SPECIALISTS · ONE PROJECT MANAGER</p><h2>Team activity</h2></div>
             <span class="muted" id="employee-scope-label">Status comes from current tasks</span>
           </div>
-          <div id="employee-cards" class="employee-grid"></div>
+          <div class="table-wrap"><table class="team-table"><caption class="visually-hidden">Employee status and latest recorded work</caption><thead><tr><th scope="col">Employee</th><th scope="col">Status</th><th scope="col">Latest work</th><th scope="col">Today</th><th scope="col">Earlier work</th></tr></thead><tbody id="employee-cards"></tbody></table></div>
         </section>
 
         <section id="tasks" class="section-block">
@@ -160,6 +178,8 @@
               <div id="report-employees"></div>
             </article>
           </div>
+          <div class="section-heading activity-heading"><h2>Completed report links</h2></div>
+          <div id="report-library" class="project-list"></div>
         </section>
 
         <section id="chat" class="section-block">
@@ -174,7 +194,7 @@
             <div id="chat-history" class="chat-history" aria-live="polite"></div>
             <form id="chat-form" class="chat-form">
               <label class="visually-hidden" for="chat-message">Your question</label>
-              <input id="chat-message" name="message" maxlength="2000" required placeholder="Ask about running or blocked tasks:">
+              <input id="chat-message" name="message" maxlength="2000" required placeholder="Ask about running or blocked tasks…">
               <button class="button primary" type="submit">Ask</button>
             </form>
           </div>
