@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { executionLedgerToTasks } from "./execution-ledger.mjs";
 import { taskAnswer } from "./task-answers.mjs";
 import { createReadCache } from "./read-cache.mjs";
+import { answerWithOllama } from "./ai-chat.mjs";
 const tabChecks = createReadCache({ ttl: 600_000 });
 const chatReads = createReadCache();
 import { decorateRuns, scopedTasks } from "./public/run-model.js";
@@ -739,8 +740,11 @@ async function handleApi(request, response, url, services) {
       return;
     }
     const data = await dashboardData(services);
-    const answer = answerFromTasks(question, employeeId, scopedTasks(data.tasks,
-      body.view === "history" ? "history" : "current", typeof body.runKey === "string" ? body.runKey : ""));
+    const answer = await answerWithOllama({ question, employeeId,
+      tasks: scopedTasks(data.tasks, body.view === "history" ? "history" : "current", typeof body.runKey === "string" ? body.runKey : ""),
+      history: await getChatHistory(conversationId),
+      scope: (body.view === "history" ? "history" : "current") + (body.runKey ? ' / selected run' : ''),
+    });
     await saveChat(conversationId, "Boss", employeeId, question);
     await saveChat(conversationId, employeeId || "project-manager", employeeId, answer);
     chatReads.clear();

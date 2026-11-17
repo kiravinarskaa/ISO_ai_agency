@@ -182,3 +182,18 @@ Railway's Free plan includes a monthly usage credit, not unlimited compute. The
 dashboard is request-driven; a separate continuously running Codex worker may use
 more than the free credit. Review Railway usage before enabling a worker service.
 
+# Conversational AI chat
+
+Ask the team uses Ollama for natural language answers from the selected dashboard
+task scope and the last six conversation messages. Project Manager covers all
+roles; specialists see their own task records. No action tools are provided.
+Each submitted question makes one model request; page refreshes do not.
+
+On the public ISO_ai_agency service, configure OLLAMA_BASE_URL (the same HTTPS
+/v1 endpoint used by the worker), OLLAMA_API_KEY, and DASHBOARD_CHAT_MODEL (or
+CODEX_MODEL). Reuse Railway variable references where possible. Never put keys
+in source files. Provider/configuration failures are shown as errors rather than
+being replaced with keyword-based answers. Detailed context is limited to the
+150 most recently updated scoped tasks, with full task status totals and an
+explicit truncation indicator. Task records cannot verify email delivery.
+
