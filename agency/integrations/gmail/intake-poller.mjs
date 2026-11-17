@@ -2229,7 +2229,7 @@ if (
   });
 }
 
-/** Recover explicit source phrases omitted from structured arrays; never infer identity. */
+/** Recover explicit source phrases omitted from the brief; never infer identity. */
 export function repairStructuredIntake(stageRoot, brief) {
   const source = "client-input/gmail-intake.json";
   if (!Array.isArray(brief?.sources) || !brief.sources.includes(source) ||
@@ -2248,6 +2248,26 @@ export function repairStructuredIntake(stageRoot, brief) {
   const request = line => /\b(please|confirm|clarify|provide|identify|request|whether|unspecified|unknown|not (?:yet )?(?:supplied|provided|documented))\b|\?/i.test(line);
   const generatedPrefix = `Unverified client statement (${source}): `;
   let changed = false;
+  // Preserve an explicit scope sentence verbatim. Do not infer a scope from
+  // system names, requests for clarification, or conflicting scope statements.
+  if (brief.scope == null || (typeof brief.scope === "string" && (!brief.scope.trim() || brief.scope.startsWith(generatedPrefix)))) {
+    // Email plain text may hard-wrap in the middle of a scope sentence. Join
+    // soft line breaks, retaining paragraph and labelled-field boundaries.
+    const paragraphs = text.replace(/\r\n?/g, "\n")
+      .split(/\n\s*\n|\n(?=[ \t]*(?:[-*•]|[A-Za-z][A-Za-z ]{0,35}:))/)
+      .map(value => value.replace(/\n[ \t]*/g, " ").trim());
+    const statements = paragraphs.flatMap(line => line.split(/(?<=[.!?])\s+(?=[A-Z])/))
+      .filter(line => /^(?:the\s+)?(?:(?:proposed|assessment|requested)\s+)?scope\s*(?::|(?:includes|covers|is|comprises)\b)/i.test(line)
+        && line.length <= 2000 && !request(line)
+        && !/\b(?:not defined|not agreed|not determined|to be determined|TBD|none)\b/i.test(line));
+    if (statements.length === 1 && /\b[a-z]{3,}\b/i.test(statements[0].replace(/^.*?(?::|\b(?:includes|covers|is|comprises)\b)/i, ""))) {
+      const recovered = generatedPrefix + statements[0];
+      if (brief.scope !== recovered) { brief.scope = recovered; changed = true; }
+    } else if (typeof brief.scope === "string" && brief.scope.startsWith(generatedPrefix)) {
+      brief.scope = null;
+      changed = true;
+    }
+  }
   for (const [field, pattern] of Object.entries(patterns)) {
     if (Array.isArray(brief[field])) {
       const retained = brief[field].filter(value => !(typeof value === "string" &&

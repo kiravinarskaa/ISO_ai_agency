@@ -1,6 +1,18 @@
-/** Employer-facing Project Manager report contract. No assessment facts are synthesized here. */
+﻿/** Employer-facing Project Manager report contract. No assessment facts are synthesized here. */
 export const MANAGEMENT_SECTIONS = ['Executive summary','Scope and evidence basis','Findings and business impact','Work completed and remediation status','Recommendations','Remediation roadmap','Metrics and limitations','Employee contributions'];
 export const FINDING_FIELDS = ['Evidence and confidence','Issue','Potential business impact','Recommended action','Rationale','Suggested owner','Suggested target','Remediation status','Closure evidence'];
+/** Execution metadata is observed by the host, not inferred by the model. */
+export function withExecutionSnapshot(text, workflow) {
+ const cell = value => String(value ?? '').replace(/[\r\n|]/g, ' ').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+ const body = text.split(/(?=^##[ \t]+)/m)
+  .filter(section => !/^##[ \t]+Execution status[ \t]*\r?$/im.test(section.split('\n')[0]))
+  .join('').trimEnd();
+ const table = ['## Execution status',
+  'Host-recorded snapshot before Project Manager generation. These are workflow execution states, not customer control effectiveness or the final delivery status.',
+  '| Employee ID | Observed status | Recorded blocker |', '| --- | --- | --- |',
+  ...workflow.map(row => `| ${cell(row.employeeId)} | ${cell(row.status)} | ${cell(row.blocker || 'None recorded')} |`)];
+ return body + '\n\n' + table.join('\n') + '\n';
+}
 export function validateManagementReport(text) {
  const errors=[];
  for(const title of MANAGEMENT_SECTIONS) if(!new RegExp('^## '+title+'\\s*$','im').test(text)) errors.push('missing management section: '+title);

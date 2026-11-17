@@ -130,6 +130,8 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
       try { text = JSON.stringify(JSON.parse(text), null, 2); }
       catch { reject("Client brief is not valid JSON.", "OUTPUT_INVALID_JSON"); }
     }
+    // Attach host-observed metadata before validation; assessment prose is unchanged.
+    if (!isJson && typeof spec.completeCandidate === "function") text = spec.completeCandidate(text);
     // Validate a separate candidate before replacing any existing deliverable.
     candidate = path.join(path.dirname(target), `.direct-candidate-${crypto.randomUUID()}${path.extname(target)}`);
     fs.writeFileSync(candidate, text + "\n", { flag: "wx", mode: 0o600 });

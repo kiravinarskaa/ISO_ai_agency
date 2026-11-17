@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { ROSTER, runDemo, runGuard } from "../run-demo.mjs";
 import { inspectInstallation, kitHash } from "../receipts.mjs";
 import { migrateWorkspace } from "../migrate-receipts.mjs";
+import { prepareValidatedReport } from "../../integrations/reporting/cloud-email-delivery.mjs";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -221,7 +222,8 @@ for (const invalidPM of [false, true]) test(invalidPM
     if (row.employeeId === "project-manager") {
       content += "\n" + ['Executive summary','Scope and evidence basis','Findings and business impact','Work completed and remediation status','Remediation roadmap','Metrics and limitations','Employee contributions'].map(title => '## '+title+'\nTest source supported summary.').join('\n') + '\nNo material issues can be established from the supplied evidence.\n';
       const outcomes = JSON.parse(system.match(/Prior observed outcomes: (\[[^\n]+\])/)[1]);
-      content += "\n## Execution status\n" + outcomes.map(item => `| ${item.employeeId} | ${item.status} |`).join("\n") + "\n";
+      // Model omits IDs/statuses: the host must add the observed snapshot.
+      assert.equal(outcomes.length, 7);
       assert.match(body.messages[1].content, /working\/evidence-register.md/);
       assert.match(system, /Required report layout follows/);
       if (invalidPM) content = VALID_MD;
@@ -243,6 +245,9 @@ for (const invalidPM of [false, true]) test(invalidPM
   assert.equal(result.manifest.finalStatus, "completed");
   assert.ok(result.manifest.agents.every(row => row.validation.valid));
   assert.ok(fs.existsSync(path.join(f.project, "working/final-agency-report.docx")));
+  const report = fs.readFileSync(path.join(f.project, "working/final-agency-report.md"), "utf8");
+  for (const row of ROSTER.slice(0, -1)) assert.ok(report.includes(`| ${row.employeeId} |`));
+  assert.match(report, /Host-recorded snapshot/);
 });
 
 // Test goal: guard arguments match each employee CLI and subprocess failures remain denials.
@@ -429,6 +434,10 @@ test("live mock executes in dependency order and passes project-only write grant
     );
     assert.ok(seen.every((row) => !row.args.includes("--ignore-user-config")));
     assert.equal(result.manifest.finalStatus, "completed");
+    assert.match(result.manifest.agents[0].outputHash, /^[a-f0-9]{64}$/);
+    const deliveryReport = prepareValidatedReport(f.project, "TEST-001", path.relative(f.project, result.manifestPath).split(path.sep).join("/"));
+    assert.equal(deliveryReport.name, "ISO27001-readiness-report.docx");
+    assert.equal(deliveryReport.data[0], 0x50);
     assert.equal(
       result.manifest.agents.at(-1).outputPath,
       path.join(f.project, "working/final-agency-report.md"),

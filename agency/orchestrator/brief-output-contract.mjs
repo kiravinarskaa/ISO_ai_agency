@@ -32,6 +32,7 @@ export function briefOutputInstructions(projectId, classificationRequired, sourc
     "client_objective must be a nonempty string. If the message is not an assessment request, describe its actual purpose without inventing a certification objective.",
     "systems, locations, known_facts, assumptions, missing_information and sources must always be arrays, never strings, objects or null. Populate systems/locations from supplied prose; do not use empty arrays if explicitly described. Each known_facts item must be an object with a nonempty fact string and an exact project-relative source path.",
     "Unknown scope or deadline may be null, but their keys must remain present. Do not add an invented date. Empty collections mean no supported entries; document unresolved details in missing_information. Preserve fictional/client-reported labels.",
+    "scope must be a nonempty string when the request states what the assessment includes or covers, including prose such as 'The proposed scope includes ...'. Preserve stated boundaries and exclusions. Missing policies, evidence or controls are assessment gaps, not a reason to replace an explicitly supplied scope with null.",
     `The only supplied source paths are: ${JSON.stringify(sourcePaths)}. Cite the relevant paths in known_facts[].source and sources; do not invent filenames or use absolute paths.`,
     ...(classificationRequired ? [
       `intake_classification is REQUIRED. Its category must equal exactly one of ${JSON.stringify(INTAKE_CATEGORIES)}.`,

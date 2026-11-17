@@ -1,5 +1,14 @@
 # Cloud agent worker
 
+## Customer receipts, Boss intake notices and report delivery
+
+The optional cloud delivery path sends a customer receipt before AI processing,
+emails the Boss full intake details plus the original message, and sends the
+validated final DOCX to the authenticated customer with Boss CC. It requires an
+explicit Boss address and a separate Gmail sending grant; it does not change the
+read-only intake scope. See [Cloud email setup](agency/integrations/reporting/CLOUD-EMAIL.md).
+The older no-outbound descriptions below apply when delivery is disabled.
+
 ## Ollama Cloud direct execution
 
 For the Railway worker, set:

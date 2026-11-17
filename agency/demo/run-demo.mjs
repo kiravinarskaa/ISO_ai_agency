@@ -9,7 +9,7 @@
  */
 import fs from "node:fs";
 import { buildFinalDocx } from "./final-report-docx.mjs";
-import { MANAGEMENT_INSTRUCTION, validateManagementReport, managementOutputTemplate } from "./management-report-contract.mjs";
+import { MANAGEMENT_INSTRUCTION, validateManagementReport, managementOutputTemplate, withExecutionSnapshot } from "./management-report-contract.mjs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -706,7 +706,10 @@ export async function runDemo({
     briefStatus.installationMarkerReview = error.message;
   }
   // A valid pre-existing brief satisfies the first workflow stage without a subprocess.
-  if (briefValidation.valid) briefStatus.status = "reused-validated";
+  if (briefValidation.valid) {
+    briefStatus.status = "reused-validated";
+    briefStatus.outputHash = hashFile(path.join(projectRoot, "working/client-brief.json"));
+  }
   else {
     const entry = ROSTER[0];
     const employeeRoot = path.resolve(workspaceRoot, entry.workspaceRoot);
@@ -1013,6 +1016,7 @@ export async function runDemo({
         projectRoot, employeeRoot, routine: entry.routine,
         inputs: record.inputFiles, output: entry.output,
         artifactInstructions: entry.employeeId === "project-manager" ? managementOutputTemplate() : "",
+        completeCandidate: entry.employeeId === "project-manager" ? text => withExecutionSnapshot(text, promptWorkflow) : null,
         validationIssues: validation => validation.category === "MANAGEMENT_REPORT_INCOMPLETE" ? validation.errors : [],
         validateCandidate: candidate => validateMarkdown(candidate, entry.employeeId === "project-manager" ? promptWorkflow : null),
       };
