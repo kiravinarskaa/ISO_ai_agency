@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { answerWithOllama } from '../ai-chat.mjs';
 const env = { OLLAMA_BASE_URL: 'https://ollama.com/v1', OLLAMA_API_KEY: 'fake-key', DASHBOARD_CHAT_MODEL: 'example-model' };
+test('older in-progress evidence survives detail truncation with full stale and run totals', async () => {
+  const tasks = Array.from({ length: 180 }, (_, i) => ({ taskId: String(i), status: 'Completed', updatedAt: '2026-11-17T15:00:00Z' }));
+  tasks.push({ taskId: 'old', projectId: 'OLD-PROJECT', status: 'In Progress', updatedAt: '2026-11-06T10:00:00Z' });
+  await answerWithOllama({ question: 'What work is currently in progress?', tasks }, { env, fetchImpl: async (_url, options) => {
+    const evidence = JSON.parse(JSON.parse(options.body).messages.at(-1).content).evidence;
+    assert.equal(evidence.detailsTruncated, true);
+    assert.equal(evidence.tasks[0].taskId, 'old');
+    assert.equal(evidence.tasks[0].staleProgress, true);
+    assert.deepEqual(evidence.progressCounts, { recentlyUpdated: 0, stale: 1 });
+    assert.deepEqual(evidence.runCounts, { total: 181, completed: 180, incomplete: 1 });
+    return Response.json({ choices: [{ message: { content: 'No recently active work; one stale record.' } }] });
+  } });
+});
 test('normal wording reaches the model with scoped evidence and conversation', async () => {
   let body;
   const answer = await answerWithOllama({ question: 'Which runs are complete?', employeeId: 'client-manager', tasks: [
