@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { executionLedgerToTasks } from "./execution-ledger.mjs";
+import { taskAnswer } from "./task-answers.mjs";
 import { decorateRuns, scopedTasks } from "./public/run-model.js";
 import { ARCHIVE_TAB, ARCHIVE_HEADERS, archiveEventsFromRows, changeRunArchives } from "./run-archives.mjs";
 
@@ -401,12 +402,15 @@ function startOfWeek(date = new Date()) {
 
 function answerFromTasks(question, selectedEmployee, tasks) {
   const text = question.toLowerCase();
-  const relevant = selectedEmployee
+  const relevant = selectedEmployee && selectedEmployee !== "project-manager"
     ? tasks.filter((task) => task.employeeId === selectedEmployee)
     : tasks;
-  const label = selectedEmployee
+  const label = selectedEmployee && selectedEmployee !== "project-manager"
     ? EMPLOYEES.find((employee) => employee.id === selectedEmployee)?.name || selectedEmployee
     : "the agency";
+
+  const evidenceAnswer = taskAnswer(question, relevant, { label });
+  if (evidenceAnswer && !/\b(today|week)\b/.test(text)) return evidenceAnswer;
 
   if (text.includes("block")) {
     const blocked = relevant.filter((task) => task.status === "Blocked");
@@ -474,7 +478,7 @@ function answerFromTasks(question, selectedEmployee, tasks) {
       STATUSES.map((status) => status + " " + counts[status]).join(", ") + ".";
   }
 
-  return "I can answer from the task ledger about task counts, running work, blocked reasons, and this week's completions. I don't have enough ledger data to answer that question yet.";
+  return "I could not match that question to a supported task query. Try: What runs are incomplete? What is running now? Which tasks are blocked? What reports are available? Answers use the selected dashboard scope; choose Project Manager for an agency-wide summary.";
 }
 
 async function serveFile(response, filename, contentType) {
