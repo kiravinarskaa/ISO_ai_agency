@@ -4,6 +4,27 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { repairStructuredIntake } from '../intake-poller.mjs';
+test('recovers explicit prose scope without inventing controls or changing existing scope', t => {
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'scope-repair-'));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ fs.mkdirSync(path.join(root,'client-input'));
+ const file=path.join(root,'client-input/gmail-intake.json');
+ const sentence='The proposed scope includes our learning platform, customer support, HR, and supporting IT operations.';
+ fs.writeFileSync(file,JSON.stringify({bodyText:`We provide online training. ${sentence} We aim to prepare within six months.`}));
+ const brief={scope:null,sources:['client-input/gmail-intake.json'],systems:['AWS'],locations:['Tashkent']};
+ assert.equal(repairStructuredIntake(root,brief),true);
+ assert.equal(brief.scope,`Unverified client statement (client-input/gmail-intake.json): ${sentence}`);
+ assert.equal(repairStructuredIntake(root,brief),false);
+ brief.scope='Existing client-provided scope';
+ assert.equal(repairStructuredIntake(root,brief),false);
+ assert.equal(brief.scope,'Existing client-provided scope');
+ for(const bodyText of ['Please confirm the proposed scope.', 'Scope: unknown', 'Scope is not defined.', 'Scope: customer portal\nScope: HR operations', 'We use AWS and Google Workspace.']) {
+  fs.writeFileSync(file,JSON.stringify({bodyText}));
+  const candidate={scope:null,sources:['client-input/gmail-intake.json'],systems:['AWS'],locations:['Tashkent']};
+  assert.equal(repairStructuredIntake(root,candidate),false,bodyText);
+  assert.equal(candidate.scope,null);
+ }
+});
 test('recovers source statements once without claiming verification or inventing locations', () => {
  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'intake-repair-'));
  try {
