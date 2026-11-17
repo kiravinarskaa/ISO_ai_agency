@@ -5,6 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { executionLedgerToTasks } from "./execution-ledger.mjs";
 import { taskAnswer } from "./task-answers.mjs";
+import { createReadCache } from "./read-cache.mjs";
+const tabChecks = createReadCache({ ttl: 600_000 });
+const chatReads = createReadCache();
 import { decorateRuns, scopedTasks } from "./public/run-model.js";
 import { ARCHIVE_TAB, ARCHIVE_HEADERS, archiveEventsFromRows, changeRunArchives } from "./run-archives.mjs";
 
@@ -75,6 +78,10 @@ function spreadsheetId() {
 }
 
 async function ensureTab(sheets, title, headers) {
+  return tabChecks.read(spreadsheetId() + ':' + title, () => verifyTab(sheets, title, headers));
+}
+
+async function verifyTab(sheets, title, headers) {
   const bookId = spreadsheetId();
   const book = await sheets.spreadsheets.get({
     spreadsheetId: bookId,
@@ -287,7 +294,7 @@ async function saveChat(conversationId, speaker, employeeId, message) {
 }
 
 async function getChatHistory(conversationId) {
-  const rows = await readRows(CHAT_TAB, CHAT_HEADERS);
+  const rows = await chatReads.read(spreadsheetId(), () => readRows(CHAT_TAB, CHAT_HEADERS));
   return rows
     .filter((row) => row.cells[0] === conversationId)
     .map((row) => ({
@@ -736,6 +743,7 @@ async function handleApi(request, response, url, services) {
       body.view === "history" ? "history" : "current", typeof body.runKey === "string" ? body.runKey : ""));
     await saveChat(conversationId, "Boss", employeeId, question);
     await saveChat(conversationId, employeeId || "project-manager", employeeId, answer);
+    chatReads.clear();
     json(response, 200, { answer });
     return;
   }
@@ -754,6 +762,11 @@ function missingSheetSettings() {
 
 export function createDashboardHandler(services = {}) {
 const dependencies = { loadTasks: getTasks, loadEvents: readArchiveEvents, appendEvents: appendArchiveEvents, ...services };
+const snapshotReads = createReadCache();
+const cachedDependencies = { ...dependencies,
+  loadTasks: () => snapshotReads.read('tasks', dependencies.loadTasks),
+  loadEvents: () => snapshotReads.read('events', dependencies.loadEvents),
+};
 return async (request, response) => {
   try {
     const url = new URL(request.url || "/", "http://" + (request.headers.host || "localhost"));
@@ -764,7 +777,15 @@ return async (request, response) => {
         });
         return;
       }
-      await handleApi(request, response, url, dependencies);
+      // Archive writes retain fresh status checks. Chat can reuse the same
+      // short-lived snapshot as polling; other writes invalidate that snapshot.
+      const mutation = request.method !== 'GET' && url.pathname !== '/api/chat';
+      if (mutation) snapshotReads.clear();
+      try {
+        await handleApi(request, response, url, mutation ? dependencies : cachedDependencies);
+      } finally {
+        if (mutation) snapshotReads.clear();
+      }
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
