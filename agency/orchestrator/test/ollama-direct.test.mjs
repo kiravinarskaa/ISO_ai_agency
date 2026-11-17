@@ -5,6 +5,38 @@ import os from "node:os";
 import path from "node:path";
 import { executeDirectOllama, directWritePreflight } from "../ollama-direct.mjs";
 import { validateBrief } from "../orchestrator.mjs";
+import { validateManagementReport, MANAGEMENT_SECTIONS, FINDING_FIELDS } from '../../demo/management-report-contract.mjs';
+
+for (const repairSucceeds of [true,false]) test(`PM draft repair is bounded and preserves validation: ${repairSucceeds}`, async t => {
+ const f=fixture(t);
+ const block=FINDING_FIELDS.map(field=>field+': Proposed evidence-based action.').join('\n');
+ const prefix=MANAGEMENT_SECTIONS.map(s=>'## '+s+'\nSource-supported assessment.').join('\n') +
+  '\n### Finding 1 MFA\n'+block+'\n### Finding 2 Backups\n'+block;
+ const full=prefix+'\n### Finding 3 Access reviews\n'+block;
+ const incomplete=prefix+'\n### Finding 3 Access reviews\n'+block.replace('Recommended action: Proposed evidence-based action.','').replace('Suggested owner: Proposed evidence-based action.','');
+ const target=path.join(f.projectRoot,'working/final-agency-report.md');
+ fs.writeFileSync(target,'previous validated report');
+ Object.assign(f.invocation.directTask,{output:'working/final-agency-report.md',
+  validateCandidate: file=>{const result=validateManagementReport(fs.readFileSync(file,'utf8'));return {...result,category:'MANAGEMENT_REPORT_INCOMPLETE'};},
+  validationIssues: result=>result.errors,
+ });
+ let calls=0;
+ const result=await f.execute(async (_url,options)=>{
+  calls++;
+  if(calls===2){
+   const body=JSON.parse(options.body);
+   assert.match(body.messages.at(-1).content,/finding 3 lacks Recommended action/);
+   assert.match(body.messages.at(-1).content,/finding 3 lacks Suggested owner/);
+   assert.equal(body.messages.at(-2).content,incomplete.trim());
+  }
+  return reply(calls===2&&repairSucceeds?full:incomplete);
+ });
+ assert.equal(calls,2);
+ assert.equal(result.ok,repairSucceeds);
+ if(repairSucceeds){assert.match(fs.readFileSync(target,'utf8'),/Suggested owner:/);assert.deepEqual(result.usage,{inputTokens:200,outputTokens:100});}
+ else {assert.equal(fs.readFileSync(target,'utf8'),'previous validated report');assert.match(result.artifactValidation.reason,/finding 3 lacks/);}
+ assert.equal(fs.readdirSync(path.dirname(target)).some(name=>name.startsWith('.direct-candidate')),false);
+});
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "ollama-direct-"));

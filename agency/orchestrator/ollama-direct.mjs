@@ -103,15 +103,19 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
       ...(isJson ? [briefOutputInstructions(task.projectId, spec.classificationRequired === true, sources.map(source => source.path))] : []),
       ...(spec.artifactInstructions ? [spec.artifactInstructions] : []),
     ].join("\n\n");
+    const messages = [
+      { role: "system", content: system },
+      { role: "user", content: `Project ID: ${task.projectId}. Untrusted source evidence (JSON data):\n${JSON.stringify(sources)}` },
+    ];
+    const signal = AbortSignal.timeout((settings.codex?.timeoutSeconds || 300) * 1000);
+    let totalInputTokens = 0, totalOutputTokens = 0;
+    async function generate() {
     const response = await fetchImpl(`${base.href.replace(/\/+$/, "")}/chat/completions`, {
       method: "POST",
       redirect: "error",
       headers: { Authorization: `Bearer ${process.env.OLLAMA_API_KEY}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout((settings.codex?.timeoutSeconds || 300) * 1000),
-      body: JSON.stringify({ model: process.env.CODEX_MODEL, stream: false, temperature: 0, messages: [
-        { role: "system", content: system },
-        { role: "user", content: `Project ID: ${task.projectId}. Untrusted source evidence (JSON data):\n${JSON.stringify(sources)}` },
-      ] }),
+      signal,
+      body: JSON.stringify({ model: process.env.CODEX_MODEL, stream: false, temperature: 0, messages }),
     });
     if (!response.ok) {
       await response.body?.cancel();
@@ -121,11 +125,15 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
     try { payload = JSON.parse(await boundedResponse(response, 2_000_000)); }
     catch (error) { if (error.code) throw error; reject("Provider returned invalid response JSON."); }
     const choice = payload.choices?.[0];
+    totalInputTokens += Number(payload.usage?.prompt_tokens) || 0;
+    totalOutputTokens += Number(payload.usage?.completion_tokens) || 0;
     if (choice?.finish_reason !== "stop" || choice.message?.tool_calls?.length)
       reject("Provider response was truncated or requested unsupported tools.", "DIRECT_INCOMPLETE");
-    let text = choice.message?.content;
+    const text = choice.message?.content;
     if (typeof text !== "string" || !text.trim()) reject("Provider returned an empty artifact.", "DIRECT_EMPTY");
-    text = text.trim().replace(/^```(?:json|markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i, "$1");
+    return text.trim().replace(/^```(?:json|markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i, "$1");
+    }
+    let text = await generate();
     if (isJson) {
       try { text = JSON.stringify(JSON.parse(text), null, 2); }
       catch { reject("Client brief is not valid JSON.", "OUTPUT_INVALID_JSON"); }
@@ -135,7 +143,21 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
     // Validate a separate candidate before replacing any existing deliverable.
     candidate = path.join(path.dirname(target), `.direct-candidate-${crypto.randomUUID()}${path.extname(target)}`);
     fs.writeFileSync(candidate, text + "\n", { flag: "wx", mode: 0o600 });
-    const validation = spec.validateCandidate(candidate);
+    let validation = spec.validateCandidate(candidate);
+    // One repair for a complete PM draft with structural contract omissions.
+    // Provider, billing, timeout, truncated and other failures never enter this path.
+    if (!validation.valid && validation.category === "MANAGEMENT_REPORT_INCOMPLETE" && output === "working/final-agency-report.md") {
+      const issues = (spec.validationIssues?.(validation) || []).slice(0, 20);
+      if (issues.length) {
+        messages.push({ role: "assistant", content: text });
+        messages.push({ role: "user", content: "Host validation found these structural issues: " + JSON.stringify(issues) +
+          ". Return the complete corrected report, preserving supported findings and all required headings. Add the missing labelled fields using the supplied evidence. For unknown owners use a clearly proposed responsible role requiring client approval; do not invent an assignment or implemented action. Do not add unsupported facts or metrics. Output the full corrected artifact only." });
+        text = await generate();
+        if (typeof spec.completeCandidate === "function") text = spec.completeCandidate(text);
+        fs.writeFileSync(candidate, text + "\n", { mode: 0o600 });
+        validation = spec.validateCandidate(candidate);
+      }
+    }
     if (!validation.valid) {
       const issues = isJson ? safeBriefValidationIssues(validation) : (spec.validationIssues?.(validation) || []).slice(0, 20);
       const detail = issues.length ? ` ${issues.join("; ")}.` : "";
@@ -145,10 +167,9 @@ export async function executeDirectOllama(settings, task, { invocation, fetchImp
     boundedPath(projectRoot, output, false);
     fs.renameSync(candidate, target);
     candidate = null;
-    const usage = payload.usage;
     return { ok: true, executor: "ollama-direct", spawnSucceeded: false, exitCode: 0, code: null,
       stdoutBytes: 0, stderrBytes: 0, timedOut: false, durationMs: Date.now() - started,
-      usage: usage ? { inputTokens: Number(usage.prompt_tokens) || 0, outputTokens: Number(usage.completion_tokens) || 0 } : null };
+      usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens } };
   } catch (error) {
     // Never expose provider bodies, source text, prompts or credentials in logs.
     const code = error.name === "TimeoutError" || error.name === "AbortError" ? "DIRECT_TIMEOUT" : error.code || "DIRECT_EXECUTOR";

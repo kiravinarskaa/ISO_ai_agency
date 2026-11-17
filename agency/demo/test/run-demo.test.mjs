@@ -214,7 +214,7 @@ for (const invalidPM of [false, true]) test(invalidPM
     assert.equal(url, "https://ollama.com/v1/chat/completions");
     const body = JSON.parse(options.body);
     const system = body.messages[0].content;
-    const row = ROSTER[seen.length];
+    const row = ROSTER[Math.min(seen.length, ROSTER.length - 1)];
     seen.push(row.employeeId);
     assert.ok(system.includes(row.routine));
     assert.equal(body.tools, undefined);
@@ -232,7 +232,7 @@ for (const invalidPM of [false, true]) test(invalidPM
   };
   // Use the real default executor and preflight, with only network and guards mocked.
   const result = await runDemo({ workspaceRoot: f.workspace, projectId: "TEST-001", guard });
-  assert.deepEqual(seen, ROSTER.map(row => row.employeeId));
+  assert.deepEqual(seen, [...ROSTER.map(row => row.employeeId), ...(invalidPM ? ['project-manager'] : [])]);
   if (invalidPM) {
     assert.notEqual(result.manifest.finalStatus, "completed");
     const manager = result.manifest.agents.at(-1);

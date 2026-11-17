@@ -1,5 +1,11 @@
 # Customer report generation
 
+If a complete PM draft fails the management output contract, the direct executor
+may make one additional model request with the draft and exact validation errors.
+The repaired draft must pass the same checks before atomic publication. Both
+requests share one timeout budget and token usage is combined. Billing/provider,
+timeout, truncated-response and non-PM failures do not trigger this repair.
+
 The Project Manager creates an internal management assessment with execution
 metadata for the boss and audit trail. The customer DOCX uses an allowlisted
 projection containing only the executive summary, review scope, client-provided
