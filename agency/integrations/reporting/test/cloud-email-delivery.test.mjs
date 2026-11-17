@@ -28,7 +28,7 @@ function fixture(t) {
   const sourcePath = path.join(projectRoot, "client-input/gmail-intake.json");
   const source = { messageId: "msg-test", threadId: "thread-test", senderEmail: "customer@example.com", sender: "Fictional Client <customer@example.com>",
     senderAuthenticationVerified: true, rfcMessageId: "<original@example.com>", subject: "ISO readiness request", receivedAt: "2026-11-17T08:00:00Z",
-    deterministicClassification: { category: "new_client_request" }, bodyText: "FULL CUSTOMER REQUEST - with all supplied details.",
+    deterministicClassification: { category: "new_client_request" }, bodyText: "FULL CUSTOMER REQUEST — with all supplied details.",
     attachments: [{ filename: "evidence.pdf", size: 123 }] };
   fs.writeFileSync(sourcePath, JSON.stringify(source));
   fs.writeFileSync(path.join(projectRoot, "project.json"), JSON.stringify({ projectId, projectType: "intake-staging", messageId: source.messageId }));
@@ -36,7 +36,7 @@ function fixture(t) {
     order: outputs.map(([id]) => id), agents: [] };
   for (const [employeeId, routine, filename] of outputs) {
     const outputPath = path.join(projectRoot, "working", filename);
-    const text = filename.endsWith(".json") ? '{"project_id":"INTAKE-test"}' : "# Synthetic report\n\n## Established facts\nClient-reported fictional data.\n## Missing evidence\nNot verified.\n## Assumptions\nNone.\n## Recommendations\nCollect evidence.\n";
+    const text = filename.endsWith(".json") ? '{"project_id":"INTAKE-test"}' : "# Synthetic report\n\n## Executive summary\nPreliminary assessment of fictional client information.\n\n## Established facts\nClient-reported fictional data.\n## Missing evidence\nNot verified.\n## Assumptions\nNone.\n## Recommendations\nCollect evidence.\n";
     fs.writeFileSync(outputPath, text);
     manifest.agents.push({ employeeId, routine, status: "completed", finishedAt: manifest.finishedAt, validation: { valid: true }, outputExists: true, subprocessExitStatus: 0, outputPath, outputHash: hash(text) });
   }
@@ -182,7 +182,7 @@ test("configuration requires an explicit Boss address and a separate send-scoped
 });
 
 test("MIME headers reject injection and fold long Unicode subjects correctly", () => {
-  const args = { from: "agency@example.com", to: "customer@example.com", cc: "boss@example.com", subject: "����� ".repeat(80), text: "test", reference: "<test@example.com>" };
+  const args = { from: "agency@example.com", to: "customer@example.com", cc: "boss@example.com", subject: "Отчёт ".repeat(80), text: "test", reference: "<test@example.com>" };
   const mime = decode(composeDelivery(args));
   for (const line of mime.split("\r\n")) assert.ok(line.length <= 998);
   assert.throws(() => composeDelivery({ ...args, to: "customer@example.com\r\nBcc: attacker@example.com" }));

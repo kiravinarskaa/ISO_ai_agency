@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { clientReportMarkdown } from './client-report.mjs';
 const sources = [
  ['Client Manager','client-brief.json'],
  ['ISMS Readiness Planner','isms-readiness-plan.md'],
@@ -19,7 +20,7 @@ function paragraph(s,style='Normal') {
 function table(rows) {
  const count=Math.max(...rows.map(row=>row.length));
  const width=Math.floor(10080/count);
- return '<w:tbl><w:tblPr><w:tblW w:w="10080" w:type="dxa"/><w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(x=>`<w:${x} w:val="single" w:sz="4" w:color="D9D9D9"/>`).join('')+'</w:tblBorders><w:tblCellMar><w:top w:w="90" w:type="dxa"/><w:left w:w="110" w:type="dxa"/><w:bottom w:w="90" w:type="dxa"/><w:right w:w="110" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'+Array.from({length:count},()=>`<w:gridCol w:w="${width}"/>`).join('')+'</w:tblGrid>'+rows.map((row,i)=>'<w:tr><w:trPr>'+(!i?'<w:tblHeader/>':'')+'</w:trPr>'+row.map(cell=>`<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${!i?'<w:shd w:fill="E7EDF2"/>':''}</w:tcPr>${paragraph(cell.replace(/\*\*|`/g,''))}</w:tc>`).join('')+'</w:tr>').join('')+'</w:tbl>';
+ return '<w:tbl><w:tblPr><w:tblW w:w="10080" w:type="dxa"/><w:tblBorders>'+['top','left','bottom','right','insideH','insideV'].map(x=>`<w:${x} w:val="single" w:sz="4" w:color="D9D9D9"/>`).join('')+'</w:tblBorders><w:tblCellMar><w:top w:w="90" w:type="dxa"/><w:left w:w="110" w:type="dxa"/><w:bottom w:w="90" w:type="dxa"/><w:right w:w="110" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'+Array.from({length:count},()=>`<w:gridCol w:w="${width}"/>`).join('')+'</w:tblGrid>'+rows.map((row,i)=>'<w:tr><w:trPr><w:cantSplit/>'+(!i?'<w:tblHeader/>':'')+'</w:trPr>'+row.map(cell=>`<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${!i?'<w:shd w:fill="E7EDF2"/>':''}</w:tcPr>${paragraph(cell.replace(/\*\*|`/g,''))}</w:tc>`).join('')+'</w:tr>').join('')+'</w:tbl>';
 }
 function crc(data) { let c=0xffffffff; for(const b of data) {c ^= b;for(let i=0;i<8;i++) c=(c>>>1)^((c&1)?0xedb88320:0);}return (c^0xffffffff)>>>0; }
 // Standard uncompressed ZIP keeps this small export independent of paid services and packages.
@@ -44,13 +45,11 @@ export function buildFinalDocx(projectRoot,manifest) {
  if(!text.trim() || Buffer.byteLength(text)>1000000) throw new Error('DOCX_SOURCE_INVALID');
  return {role,name,text,sha256:crypto.createHash('sha256').update(text).digest('hex')};
  });
- let body=paragraph('ISO IEC 27001 2022 readiness preparation report','Title');
- body+=paragraph('Project '+manifest.projectId)+paragraph('Run '+manifest.runId);
- body+=paragraph('This report contains unverified client supplied information and proposed recommendations. It is readiness preparation only, not an audit, certification or compliance claim. Where inputs describe fictional or synthetic test evidence, all resulting assessment statements remain fictional test material.');
- body+=paragraph('Workflow results','Heading1');
- for(const row of manifest.agents) body+=paragraph(`${row.employeeId}: ${row.status}; artifact validation: ${row.validation?.valid === true ? 'passed' : 'not passed'}`);
- body+=paragraph('Consolidated conclusions and recommendations','Heading1');
- const report = inputs[7].text;
+ let body=paragraph('ISO/IEC 27001 readiness report','Title');
+ body+=paragraph('Prepared '+String(manifest.finishedAt || new Date().toISOString()).slice(0,10));
+ body+=paragraph('Preliminary readiness advice based on client-provided information. This is not an audit or certification. Proposed actions, owners and timeframes require your approval.');
+ if (/\b(?:synthetic|fictional)\b/i.test(inputs[0].text)) body+=paragraph('The supplied scenario is labelled synthetic or fictional; findings retain that limitation.');
+ const report = clientReportMarkdown(inputs[7].text);
  const lines = report.split(/\r?\n/);
  for(let i=0;i<lines.length;i++) {
    const line=lines[i]; if(!line.trim()) continue;
@@ -66,10 +65,8 @@ export function buildFinalDocx(projectRoot,manifest) {
    const heading=/^(#{1,6})\s+(.*)/.exec(line);
    body+=paragraph((heading?heading[2]:line).replace(/\*\*|`/g,''),heading?(heading[1].length<=2?'Heading1':'Heading2'):'Normal');
  }
- body+=paragraph('Employee contributions and source records','Heading1');
- for(const input of inputs) body+=paragraph(input.role+' ? working/'+input.name);
- const document=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080"/></w:sectPr></w:body></w:document>`;
- const styles=`<?xml version="1.0"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/><w:color w:val="000000"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="140"/></w:pPr></w:pPrDefault></w:docDefaults>${[['Normal',22],['Title',32],['Heading1',28],['Heading2',24]].map(([name,size])=>`<w:style w:type="paragraph" w:styleId="${name}"><w:name w:val="${name}"/><w:pPr>${name!=='Normal'?'<w:keepNext/>':''}</w:pPr><w:rPr><w:sz w:val="${size}"/><w:color w:val="000000"/></w:rPr></w:style>`).join('')}</w:styles>`;
+ const document=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1080" w:right="913" w:bottom="1080" w:left="913"/></w:sectPr></w:body></w:document>`;
+ const styles=`<?xml version="1.0"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/><w:color w:val="000000"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>${[['Normal',22],['Title',32],['Heading1',28],['Heading2',24]].map(([name,size])=>`<w:style w:type="paragraph" w:styleId="${name}"><w:name w:val="${name}"/><w:pPr>${name!=='Normal'?'<w:keepNext/>':''}</w:pPr><w:rPr><w:sz w:val="${size}"/><w:color w:val="${name === 'Normal' ? '000000' : '17365D'}"/>${name === 'Normal' ? '' : '<w:b/>'}</w:rPr></w:style>`).join('')}</w:styles>`;
  const data=zip([
  ['[Content_Types].xml','<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'],
  ['_rels/.rels','<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'],
