@@ -222,7 +222,8 @@ for (const invalidPM of [false, true]) test(invalidPM
     if (row.employeeId === "project-manager") {
       content += "\n" + ['Executive summary','Scope and evidence basis','Findings and business impact','Work completed and remediation status','Remediation roadmap','Metrics and limitations','Employee contributions'].map(title => '## '+title+'\nTest source supported summary.').join('\n') + '\nNo material issues can be established from the supplied evidence.\n';
       const outcomes = JSON.parse(system.match(/Prior observed outcomes: (\[[^\n]+\])/)[1]);
-      content += "\n## Execution status\n" + outcomes.map(item => `| ${item.employeeId} | ${item.status} |`).join("\n") + "\n";
+      // Model omits IDs/statuses: the host must add the observed snapshot.
+      assert.equal(outcomes.length, 7);
       assert.match(body.messages[1].content, /working\/evidence-register.md/);
       assert.match(system, /Required report layout follows/);
       if (invalidPM) content = VALID_MD;
@@ -244,6 +245,9 @@ for (const invalidPM of [false, true]) test(invalidPM
   assert.equal(result.manifest.finalStatus, "completed");
   assert.ok(result.manifest.agents.every(row => row.validation.valid));
   assert.ok(fs.existsSync(path.join(f.project, "working/final-agency-report.docx")));
+  const report = fs.readFileSync(path.join(f.project, "working/final-agency-report.md"), "utf8");
+  for (const row of ROSTER.slice(0, -1)) assert.ok(report.includes(`| ${row.employeeId} |`));
+  assert.match(report, /Host-recorded snapshot/);
 });
 
 // Test goal: guard arguments match each employee CLI and subprocess failures remain denials.

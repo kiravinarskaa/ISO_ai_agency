@@ -1,6 +1,18 @@
-import test from 'node:test';
+﻿import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateManagementReport,MANAGEMENT_SECTIONS,FINDING_FIELDS,managementOutputTemplate} from '../management-report-contract.mjs';
+import {validateManagementReport,MANAGEMENT_SECTIONS,FINDING_FIELDS,managementOutputTemplate,withExecutionSnapshot} from '../management-report-contract.mjs';
+test('host snapshot preserves failed states and prose while replacing model status claims',()=>{
+ const draft='# Report\n\n## Executive summary\nEvidence remains limited.\n\n## Execution status\nEveryone completed.\n\n## Recommendations\nCollect missing evidence.\n';
+ const workflow=[{employeeId:'evidence-specialist',status:'failed',blocker:'Missing input | requires review'}, {employeeId:'project-manager',status:'not-run'}];
+ const report=withExecutionSnapshot(draft,workflow);
+ assert.ok(report.includes('Evidence remains limited.'));
+ assert.ok(report.includes('Collect missing evidence.'));
+ assert.ok(!report.includes('Everyone completed.'));
+ assert.ok(report.includes('| evidence-specialist | failed | Missing input   requires review |'));
+ assert.ok(report.includes('| project-manager | not-run |'));
+ assert.equal(report.match(/^## Execution status$/gm).length,1);
+ assert.equal(withExecutionSnapshot(report,workflow),report);
+});
 const sections=MANAGEMENT_SECTIONS.map(t=>'## '+t+'\nSource-supported summary.').join('\n');
 test('generic agent logs cannot pass as a management report',()=>{
  assert.equal(validateManagementReport('## Established facts\nFiles exist.\n## Recommendations\nCollect evidence.').valid,false);
