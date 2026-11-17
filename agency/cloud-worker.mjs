@@ -16,7 +16,8 @@ import { google } from "googleapis";
 import { runDemo, ROSTER } from "./demo/run-demo.mjs";
 import { sanitizeDiagnostic } from "./orchestrator/orchestrator.mjs";
 import { usesDirectOllama } from "./orchestrator/ollama-direct.mjs";
-import { emailDeliveryConfig, createCloudEmailDelivery } from "./integrations/reporting/cloud-email-delivery.mjs";
+import { emailDeliveryConfig, createCloudEmailDelivery, prepareValidatedReport } from "./integrations/reporting/cloud-email-delivery.mjs";
+import { recoveredDashboardUpdates } from "./recovered-dashboard.mjs";
 import {
   loadConfiguration,
   listTasks,
@@ -320,7 +321,7 @@ async function createEmployeeRows(sheets, parent, projectId, executionMode = "sy
       status: "Queued",
       resultLink: "",
       completionTime: "",
-      title: parent.title + " - " + EMPLOYEE_NAMES.get(employee.employeeId),
+      title: parent.title + " — " + EMPLOYEE_NAMES.get(employee.employeeId),
       deadline: parent.deadline,
       blockerReason: "",
       updatedAt: now,
@@ -675,6 +676,37 @@ async function processEmailIntake(sheets) {
 }
 
 let busy = false;
+async function reconcileRecoveredDashboard(sheets) {
+  const tasks = await readTasks(sheets);
+  const parents = tasks.filter(task => task.executionMode === "email-intake-eight-agent" &&
+    task.parentTaskId === task.taskId && /^INTAKE-[a-f0-9]{24}$/.test(task.projectId || ""));
+  for (const parent of parents) {
+    const stages = tasks.filter(task => task.parentTaskId === parent.taskId);
+    if (stages.every(task => task.status === "Completed")) continue;
+    try {
+      const projectRoot = path.join(PROJECTS_DIR, parent.projectId);
+      const runsRoot = path.join(projectRoot, "logs", "demo-runs");
+      const runs = (await fs.readdir(runsRoot)).filter(name => /^[A-Za-z0-9._-]+$/.test(name)).sort().reverse();
+      if (!runs.length) continue;
+      // Inspect only the latest attempt: an older success must not overwrite a newer failure.
+      const relative = `logs/demo-runs/${runs[0]}/manifest.json`;
+      prepareValidatedReport(projectRoot, parent.projectId, relative);
+      const manifestPath = path.join(projectRoot, relative);
+      const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+      const link = "https://docs.google.com/spreadsheets/d/" + encodeURIComponent(spreadsheetId()) + "/edit";
+      const updates = recoveredDashboardUpdates(tasks, manifest, link);
+      if (!updates.some(task => task.taskId === parent.taskId)) continue;
+      // Publish the real report before marking its workflow complete. Retry safely if Sheets fails.
+      if (!await saveFinalReport(sheets, parent, parent.projectId, manifestPath)) continue;
+      for (const task of updates) await updateTask(sheets, task);
+      workerLog(`Recovered completed workflow synchronized to dashboard; project ${parent.projectId}.`);
+    } catch (error) {
+      if (error.response || [429, 500, 503].includes(Number(error.code)))
+        workerLog(`Recovered workflow dashboard update deferred; project ${parent.projectId}.`);
+      // Missing, incomplete or altered outputs never change dashboard status.
+    }
+  }
+}
 async function pollQueue(sheets) {
   if (busy) return;
   busy = true;
@@ -686,6 +718,7 @@ async function pollQueue(sheets) {
       await processJob(sheets, job);
     }
     await processEmailIntake(sheets);
+    await reconcileRecoveredDashboard(sheets);
     // Recover a validated report if the process exited between generation and enqueue.
     // Only requests with this policy's intake events are eligible, not old history.
     emailDelivery?.recoverReports();
