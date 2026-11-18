@@ -2257,10 +2257,10 @@ export function repairStructuredIntake(stageRoot, brief) {
       .split(/\n\s*\n|\n(?=[ \t]*(?:[-*•]|[A-Za-z][A-Za-z ]{0,35}:))/)
       .map(value => value.replace(/\n[ \t]*/g, " ").trim());
     const statements = paragraphs.flatMap(line => line.split(/(?<=[.!?])\s+(?=[A-Z])/))
-      .filter(line => /^(?:the\s+)?(?:(?:proposed|assessment|requested)\s+)?scope\s*(?::|(?:includes|covers|is|comprises)\b)/i.test(line)
+      .filter(line => /^(?:(?:the\s+)?(?:(?:proposed|assessment|requested)\s+)?scope\s*(?::|(?:includes|covers|is|comprises)\b)|we(?:['’]d| would) like (?:the )?(?:proposed )?assessment to cover\b)/i.test(line)
         && line.length <= 2000 && !request(line)
         && !/\b(?:not defined|not agreed|not determined|to be determined|TBD|none)\b/i.test(line));
-    if (statements.length === 1 && /\b[a-z]{3,}\b/i.test(statements[0].replace(/^.*?(?::|\b(?:includes|covers|is|comprises)\b)/i, ""))) {
+    if (statements.length === 1 && /\b[a-z]{3,}\b/i.test(statements[0].replace(/^.*?(?::|\b(?:includes|covers|cover|is|comprises)\b)/i, ""))) {
       const recovered = generatedPrefix + statements[0];
       if (brief.scope !== recovered) { brief.scope = recovered; changed = true; }
     } else if (typeof brief.scope === "string" && brief.scope.startsWith(generatedPrefix)) {

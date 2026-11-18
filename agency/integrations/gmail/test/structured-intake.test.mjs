@@ -30,6 +30,17 @@ test('recovers explicit prose scope without inventing controls or changing exist
   assert.equal(candidate.scope,null);
  }
 });
+test('recovers a direct request describing what the proposed assessment should cover', t => {
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'scope-request-'));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ fs.mkdirSync(path.join(root,'client-input'));
+ const source='client-input/gmail-intake.json';
+ const sentence='We’d like the proposed assessment to cover our head office and dispatch operations, including the systems we use for business email, cloud file storage, customer records, and shipment scheduling.';
+ fs.writeFileSync(path.join(root,source),JSON.stringify({bodyText:`We’re a logistics company. ${sentence} Could you let us know how to get started?`}));
+ const brief={scope:null,sources:[source],systems:[],locations:[]};
+ assert.equal(repairStructuredIntake(root,brief),true);
+ assert.equal(brief.scope,`Unverified client statement (${source}): ${sentence}`);
+});
 test('recovers source statements once without claiming verification or inventing locations', () => {
  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'intake-repair-'));
  try {

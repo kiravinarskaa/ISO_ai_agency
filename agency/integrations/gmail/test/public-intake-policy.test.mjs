@@ -24,6 +24,16 @@ test("preliminary lane admits grounded sufficient client facts and rejects insuf
   assert.equal(evaluatePublicPreliminary({ record, brief: { ...brief, known_facts: [{ fact: "self citation", source: "working/client-brief.json" }], sources: ["working/client-brief.json"] }, projectRoot: f.root }).eligible, false);
 });
 
+test("stored and live scope gaps are reported once", (t) => {
+  const f = fixture(t);
+  fs.mkdirSync(path.join(f.root, "client-input"), { recursive: true });
+  fs.writeFileSync(path.join(f.root, "client-input", "gmail-intake.json"), "Synthetic source.");
+  const record = { schemaVersion: 1, intakeLane: "public-inquiry", preparationStatus: "onboarding_incomplete", senderIdentityVerified: false, organizationIdentityVerified: false, clientClaimsVerified: false, missingInformation: ["proposed scope"] };
+  const brief = { project_id: "INTAKE-test", client_objective: "Readiness review", systems: ["mail"], locations: ["Tashkent"], known_facts: [{ fact: "Client reports 20 staff", source: "client-input/gmail-intake.json" }], sources: ["client-input/gmail-intake.json"], intake_classification: { category: "new_client_request" } };
+
+  assert.deepEqual(evaluatePublicPreliminary({ record, brief, projectRoot: f.root }), { eligible: false, missing: ["proposed scope"] });
+});
+
 test("security classification overrides sufficient preliminary data until an external authorized review is recorded", (t) => {
   const f = fixture(t);
   fs.mkdirSync(path.join(f.root, "client-input"), { recursive: true });
