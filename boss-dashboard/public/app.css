@@ -134,6 +134,34 @@ input:focus, select:focus, textarea:focus { border-color: var(--mint); outline: 
 .notice { margin-bottom: 20px; padding: 12px 14px; border-radius: 8px; font-size: .82rem; }
 .notice.error { border: 1px solid #62353d; background: #2b1b25; color: #ffacb0; }
 .notice.warning { border: 1px solid #5b4a2c; background: #29251b; color: #f0d293; }
+.scope-panel { margin: 0 0 28px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.scope-topline, .scope-filters, .archive-toolbar, .dialog-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.scope-topline { justify-content: space-between; }
+.view-switch { display: inline-flex; padding: 4px; border: 1px solid var(--line); border-radius: 9px; background: var(--page); }
+.view-switch button { padding: 9px 20px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; cursor: pointer; }
+.view-switch button[aria-pressed="true"] { background: #153e3c; color: var(--mint); }
+.scope-filters { margin: 16px 0; align-items: end; }
+.scope-filters label { flex: 1 1 280px; }
+.scope-filters p { flex: 2 1 280px; font-size: .78rem; line-height: 1.5; margin: 0; }
+#run-management { border-top: 1px solid var(--line); padding-top: 14px; }
+#run-management summary { cursor: pointer; font-size: .85rem; }
+#run-management > p { font-size: .78rem; line-height: 1.5; }
+.archive-toolbar { margin-bottom: 12px; font-size: .76rem; }
+.run-filters { align-items: end; margin-top: 14px; }
+.run-filters label:last-of-type { flex: 1; }
+.run-list { max-height: 330px; overflow: auto; display: grid; gap: 8px; }
+.run-row { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--page); border: 1px solid var(--line); border-radius: 8px; }
+.run-row input { width: 18px; min-height: 18px; flex: 0 0 18px; accent-color: var(--mint); }
+.run-row > span:first-of-type { flex: 1; min-width: 0; }
+.run-row strong, .run-row small { display: block; overflow-wrap: anywhere; }
+.run-row small { margin-top: 4px; color: var(--muted); font-size: .7rem; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+dialog { width: min(560px, calc(100% - 32px)); max-height: 85vh; overflow: auto; padding: 24px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+dialog::backdrop { background: #050b16bb; }
+dialog p, dialog li { line-height: 1.5; font-size: .85rem; }
+#archive-preview-runs { max-height: 180px; overflow: auto; padding-left: 22px; }
+.dialog-actions { justify-content: flex-end; margin-top: 20px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
 .login-wrap { display: grid; min-height: 100vh; place-items: center; padding: 24px; background: radial-gradient(ellipse at top, #1a3440 0, var(--page) 55%); }

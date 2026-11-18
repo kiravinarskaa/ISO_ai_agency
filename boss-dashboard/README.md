@@ -4,7 +4,58 @@ This app is the Boss Command Center for the eight-employee agency. It is a small
 Node.js web app with plain HTML, CSS, and browser JavaScript so the page stays
 easy to read and change.
 
-## What it does
+## Current work and reversible history
+
+The default **Current** view shows the latest recorded run of each project and
+all queued or running work, including older runs that still have pending work.
+**History** shows superseded and manually archived runs. Standalone manual tasks
+are separate runs. The project/run selector scopes metrics, employee cards,
+reports, the task list, CSV export and new PM chat questions together. Existing
+saved chat messages retain their original contents. History task records and
+read-only execution-ledger rows have no edit controls.
+
+Open **Manage run history**, select finished or abandoned runs, and choose
+**Archive selected**. A confirmation previews the number of runs and tasks.
+To undo, open History, select archived runs and choose **Unarchive selected**.
+Unarchiving an older run does not make it the newest run of its project.
+Each change is limited to 100 runs. Queued or running work is rechecked by the
+server and cannot be archived. If work restarts after an archive, active work
+overrides the archive flag so it is visible in Current.
+
+The run list has explicit status and search filters, separate from the task
+board filters. **Select blocked runs**, **Select completed runs**, **Select
+archived runs**, and **Select all shown** replace the current selection using
+only the filtered run list. Counts on the buttons show the selectable total
+(up to 100). **Clear selection** deselects everything. Changing filters clears
+selection so hidden runs cannot be archived accidentally. A run with seven
+completed tasks and one blocked task is blocked, not fully completed; archiving
+it still archives the visibility of the whole run, as shown in the preview.
+
+Archive actions append only `Run Key`, `Action`, and `Timestamp` to a separate
+**Dashboard Archives** Sheet tab. Neither Task Ledger nor Ledger rows are
+deleted, cancelled, marked complete or rewritten by archiving. Reports and
+worker queues remain intact. The existing Sheets grant is sufficient; no new
+credential or OAuth scope is needed. An unavailable archive tab disables archive
+controls and shows a warning instead of dropping task data.
+
+## Test before deploying
+
+Run `node --test boss-dashboard/test/*.test.mjs` from the repository root.
+Tests cover visibility/grouping, authentication and origin checks, preview and
+cancel, archive/restore, active-work rejection, source preservation, HTML
+escaping, and archive-storage failures. The page interaction test uses a DOM
+model, not a full browser rendering engine.
+
+For a live check, deploy `feature/dashboard-run-history` as a **separate test
+dashboard service** with `/boss-dashboard` as its root and a **copy of the
+spreadsheet**. Do not point the test service at the production Sheet. Keep the
+existing worker and dashboard services on their existing branches. Test Current,
+History, run selection, refresh, archive preview/cancel, archive/restore, and
+queued-work rejection; reload and restart the test service to verify persistence.
+Also review desktop/mobile layout and keyboard access to the dialog. Merge only
+after this live check. No production archive action is required for validation.
+
+## Existing features
 
 - Lets the Boss sign in with one password.
 - Adds tasks to a Google Sheet task ledger.

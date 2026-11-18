@@ -4,6 +4,8 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { executionLedgerToTasks } from "./execution-ledger.mjs";
+import { decorateRuns, scopedTasks } from "./public/run-model.js";
+import { ARCHIVE_TAB, ARCHIVE_HEADERS, archiveEventsFromRows, changeRunArchives } from "./run-archives.mjs";
 
 // Keep these IDs aligned with the eight roles in the agency runner.
 const EMPLOYEES = [
@@ -244,6 +246,31 @@ async function writeTask(task, rowNumber) {
   }
 }
 
+async function readArchiveEvents() {
+  return archiveEventsFromRows(await readRows(ARCHIVE_TAB, ARCHIVE_HEADERS));
+}
+
+async function appendArchiveEvents(values) {
+  const sheets = await getSheetsClient();
+  await ensureTab(sheets, ARCHIVE_TAB, ARCHIVE_HEADERS);
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: spreadsheetId(), range: quoteTab(ARCHIVE_TAB) + "!A:C",
+    valueInputOption: "RAW", insertDataOption: "INSERT_ROWS",
+    requestBody: { values },
+  });
+}
+
+async function dashboardData(services) {
+  const tasks = await services.loadTasks();
+  try {
+    return { ...decorateRuns(tasks, await services.loadEvents()), archiveAvailable: true };
+  } catch {
+    // Never drop source tasks or pretend an archive change succeeded on outage.
+    return { ...decorateRuns(tasks), archiveAvailable: false,
+      warning: "Archive history is unavailable. Showing recorded tasks; archive controls are disabled." };
+  }
+}
+
 async function saveChat(conversationId, speaker, employeeId, message) {
   const sheets = await getSheetsClient();
   await ensureTab(sheets, CHAT_TAB, CHAT_HEADERS);
@@ -469,7 +496,7 @@ async function serveFile(response, filename, contentType) {
   }
 }
 
-async function handleApi(request, response, url) {
+async function handleApi(request, response, url, services) {
   if (url.pathname === "/api/health" && request.method === "GET") {
     json(response, 200, { ok: true, service: "boss-dashboard" });
     return;
@@ -532,7 +559,7 @@ async function handleApi(request, response, url) {
       return;
     }
     try {
-      json(response, 200, { tasks: await getTasks(), connected: true });
+      json(response, 200, { ...await dashboardData(services), connected: true });
     } catch (error) {
       // A Sheet outage or permission issue should not prevent the dashboard from opening.
       console.error("Google Sheet task read failed:", error.message);
@@ -541,6 +568,22 @@ async function handleApi(request, response, url) {
         connected: false,
         warning: "The Google Sheet is unavailable. Showing an empty dashboard; check the server log.",
       });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/runs/archive" && request.method === "POST") {
+    if (missingSheetSettings().length) {
+      json(response, 503, { error: "Archive changes require a connected Google Sheet." });
+      return;
+    }
+    const body = await readJson(request);
+    try {
+      const result = await changeRunArchives(services, body.runKeys, body.action);
+      json(response, 200, result);
+    } catch (error) {
+      if (error.status) json(response, error.status, { error: error.message });
+      else json(response, 503, { error: "Archive changes could not be saved. Refresh and try again." });
     }
     return;
   }
@@ -602,10 +645,14 @@ async function handleApi(request, response, url) {
       return;
     }
     const body = await readJson(request);
-    const tasks = await getTasks();
+    const tasks = (await dashboardData(services)).tasks;
     const current = tasks.find((task) => task.taskId === taskMatch[1]);
     if (!current) {
       json(response, 404, { error: "Task not found" });
+      return;
+    }
+    if (current.historical) {
+      json(response, 409, { error: "Historical tasks are read-only. Unarchive the run or choose current work." });
       return;
     }
     if (body.status && !STATUSES.includes(body.status)) {
@@ -680,7 +727,9 @@ async function handleApi(request, response, url) {
       json(response, 400, { error: "Check the chat message and selected employee." });
       return;
     }
-    const answer = answerFromTasks(question, employeeId, await getTasks());
+    const data = await dashboardData(services);
+    const answer = answerFromTasks(question, employeeId, scopedTasks(data.tasks,
+      body.view === "history" ? "history" : "current", typeof body.runKey === "string" ? body.runKey : ""));
     await saveChat(conversationId, "Boss", employeeId, question);
     await saveChat(conversationId, employeeId || "project-manager", employeeId, answer);
     json(response, 200, { answer });
@@ -699,7 +748,9 @@ function missingSheetSettings() {
     .filter((name) => !process.env[name]);
 }
 
-const server = http.createServer(async (request, response) => {
+export function createDashboardHandler(services = {}) {
+const dependencies = { loadTasks: getTasks, loadEvents: readArchiveEvents, appendEvents: appendArchiveEvents, ...services };
+return async (request, response) => {
   try {
     const url = new URL(request.url || "/", "http://" + (request.headers.host || "localhost"));
     if (url.pathname.startsWith("/api/")) {
@@ -709,7 +760,7 @@ const server = http.createServer(async (request, response) => {
         });
         return;
       }
-      await handleApi(request, response, url);
+      await handleApi(request, response, url, dependencies);
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -723,6 +774,8 @@ const server = http.createServer(async (request, response) => {
       await serveFile(response, "app.css", "text/css; charset=utf-8");
     } else if (url.pathname === "/app.js") {
       await serveFile(response, "app.js", "text/javascript; charset=utf-8");
+    } else if (url.pathname === "/run-model.js") {
+      await serveFile(response, "run-model.js", "text/javascript; charset=utf-8");
     } else {
       response.writeHead(404);
       response.end("Not found");
@@ -748,8 +801,15 @@ const server = http.createServer(async (request, response) => {
       response.end();
     }
   }
-});
+};
+}
 
+export function createDashboardServer(services = {}) {
+  return http.createServer(createDashboardHandler(services));
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+const server = createDashboardServer();
 const port = Number(process.env.PORT || 3000);
 server.listen(port, "0.0.0.0", () => {
   console.log("Boss dashboard listening on port " + port);
@@ -760,4 +820,5 @@ server.listen(port, "0.0.0.0", () => {
     console.log("Google Sheet is not connected yet; the dashboard will show an empty state until configured.");
   }
 });
+}
 
