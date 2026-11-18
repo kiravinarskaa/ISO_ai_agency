@@ -191,7 +191,17 @@ function findMissingIntakeInformation(record, brief, projectRoot) {
   if (!hasGroundedSourceFact(projectRoot, brief))
     missing.push("client-provided source facts");
 
-  return missing;
+  // The stored intake record and the live brief check can describe the same
+  // gap with different labels. Canonicalize those aliases before reporting a
+  // count so one missing scope field is not presented as two missing items.
+  const aliases = new Map([
+    ["bounded scope", "proposed scope"],
+    ["objective", "client objective"],
+    ["systems", "systems in scope"],
+    ["locations", "operating locations"],
+    ["client-provided source facts", "source-backed client information"],
+  ]);
+  return [...new Set(missing.map((item) => aliases.get(item) || item))];
 }
 
 /** Decide whether an intake can enter the unverified preliminary workflow. */
