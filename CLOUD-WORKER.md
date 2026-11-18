@@ -18,9 +18,9 @@ For the Railway worker, set:
 | --- | --- |
 | `CODEX_PROVIDER` | `ollama` |
 | `OLLAMA_BASE_URL` | `https://ollama.com/v1` |
-| `OLLAMA_API_KEY` | Your Ollama Cloud key, stored only in Railway Variables |
-| `CODEX_MODEL` | `gpt-oss:120b` (or another supported cloud model) |
-| `AGENT_EXECUTOR` | `ollama-direct` (also the default for remote Ollama) |
+| `OLLAMA_API_KEY` | Ollama Cloud key, stored only in Railway Variables |
+| `CODEX_MODEL` | `gpt-oss:120b` |
+| `AGENT_EXECUTOR` | `ollama-direct` |
 
 These names retain compatibility with existing configuration; direct execution
 does not launch Codex CLI. Startup logs identify the selected executor. The
