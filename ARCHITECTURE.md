@@ -1,13 +1,15 @@
 # Architecture and workflow
 
-Last reconciled with the workspace source: 18 November 2026. This document describes the repository's implemented application architecture. Deployment configuration and live service state can change independently; a successful configuration or health check does not prove an end-to-end assessment completed.
+Last reconciled with the workspace source: 18 November 2026. The deployed operating path is Railway; the local launcher is retained in the repository as an alternate path and is not required by the deployment. Deployment configuration and live service state can change independently, and a successful configuration or health check does not prove an end-to-end assessment completed.
 
 ## System at a glance
 
-The application has a shared Node.js workflow core and two ways to operate it:
+The application has a shared Node.js workflow core. The current deployed workflow runs on Railway:
 
-1. **Local agency workflow:** `agency/start-agency.mjs` runs as a foreground process on Windows. It polls Gmail, stages and classifies new requests, dispatches guarded work, and coordinates authorized Sheets reporting and local customer notices. State and project files are on the local filesystem.
-2. **Railway workflow:** the public Boss dashboard (`boss-dashboard/`) and the private agent worker (`agency/cloud-worker.mjs`) are separate services. The dashboard handles user sessions and task views. The worker polls its Google Sheets queue and, when enabled, Gmail. Both the local launcher and worker call the same eight-role runner. The worker stores project and queue state on a persistent Railway Volume.
+1. **Boss dashboard:** the public Railway service (`boss-dashboard/`) handles user sessions, task views, run history, chat, and Sheets access. It does not execute employee work.
+2. **Agent worker:** the separate private Railway service (`agency/cloud-worker.mjs`) polls its Google Sheets queue and, when enabled, Gmail. It calls the shared eight-role runner and stores project and queue state on a persistent Railway Volume.
+
+The repository also retains a local Windows launcher (`agency/start-agency.mjs`) that shares the runner. It is a separate, unused operating path in the current Railway deployment; it is not required to keep the Railway workflow running.
 
 The dashboard does not execute employee work. It records manual tasks for visibility and can submit an explicitly marked full synthetic run for the worker. Ordinary manually assigned or named-employee tasks are not claimed by the current worker.
 
@@ -50,7 +52,7 @@ Node.js controls paths, input snapshots, installation/role instructions, executi
 
 ## Intake and execution paths
 
-### Local launcher
+### Retained local launcher (not used by the current deployment)
 
 1. Start `node agency/start-agency.mjs` in the configured Windows workspace.
 2. Gmail polling establishes a baseline on its first cycle; later cycles screen unseen mail and stage qualifying messages. The intake OAuth grant is read-only.
@@ -60,7 +62,7 @@ Node.js controls paths, input snapshots, installation/role instructions, executi
 
 The local poller and local launcher are distinct entry points. Running `intake-poller.mjs poll` alone stages/enqueues work; it does not start the eight-role runner. The launcher coordinates polling and dispatch.
 
-### Railway dashboard and worker
+### Railway dashboard and worker (deployed operating path)
 
 The dashboard and worker are separately deployed Railway services. The dashboard writes user-assigned task rows to `Task Ledger`, reads that tab plus the existing eight-column `Ledger`, and presents progress. The worker is not exposed as a public application; `/health` is its health endpoint.
 
@@ -81,13 +83,13 @@ When separately enabled and configured, the worker's email outbox sends a fixed 
 
 ## Deployment and verification boundaries
 
-Local execution requires the PC and launcher to remain available. Railway dashboard hosting does not make the local launcher a cloud service. Railway worker processing requires its service enabled, valid provider and Sheets configuration, a persistent Volume, and an eligible queue row. Gmail polling and cloud email sending are separate opt-in settings.
+The deployed Railway worker requires its service enabled, valid provider and Sheets configuration, a persistent Volume, and an eligible queue row. Gmail polling and cloud email sending are separate opt-in settings. The retained local path requires a PC and launcher only if someone chooses to run it; it is not a dependency of the Railway services.
 
 No individual successful test, provider check, health endpoint, manifest, or dashboard status alone proves the complete live workflow. Verify current deployment revision, a fresh eligible task, each stage result, final manifest and DOCX, Sheets state, and any email in its recipient inbox before claiming end-to-end completion. Historical verification is described with its date and scope in the relevant guides.
 
 ## Related guides
 
-- [Project overview and local quick start](README.md)
+- [Project overview and Railway deployment](README.md)
 - [Railway worker configuration](CLOUD-WORKER.md)
 - [Dashboard operation and deployment](boss-dashboard/README.md)
 - [Eight-role runner and recovery](agency/demo/README.md)
@@ -95,3 +97,4 @@ No individual successful test, provider check, health endpoint, manifest, or das
 - [Reporting and local customer responses](agency/integrations/reporting/README.md)
 - [Railway customer/Boss email delivery](agency/integrations/reporting/CLOUD-EMAIL.md)
 - [Security and limitations](SECURITY.md)
+

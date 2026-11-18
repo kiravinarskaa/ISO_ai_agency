@@ -1,77 +1,66 @@
-# Railway Cloud Agent Worker
+# Railway dashboard worker
 
-The Railway dashboard and agent worker are separate services. The dashboard handles login and task views; the worker polls eligible tasks, runs the shared eight-role workflow, and records progress in Google Sheets. The local `agency/start-agency.mjs` launcher is a separate execution path with its own queue and runtime state.
+The deployed workflow uses two separate Railway services: the public Boss dashboard and the private agent worker. The dashboard handles login, task views, reports, history, and chat. The worker polls the Google Sheets task queue, runs eligible work, records progress, and can optionally poll Gmail or send email. Neither service depends on a locally running PC or launcher.
 
-See [Architecture and workflow](ARCHITECTURE.md) for the shared workflow and [Cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md) for outbound email setup.
+The repository retains `agency/start-agency.mjs` as an alternate local execution path. It shares the eight-role runner but has separate queues and runtime state; it is not part of the current Railway deployment.
+
+See [Architecture and workflow](ARCHITECTURE.md) for the system map and [Cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md) for outbound email behavior.
 
 ## Worker behavior
 
-The worker processes one task at a time. It claims only queued tasks whose execution mode is `synthetic-eight-agent`, created by selecting **Run the full eight-agent synthetic demo** in the dashboard. It ignores ordinary manual tasks, including assignments to a named employee.
+The worker polls the Google Sheets `Task Ledger` for queued rows whose `Execution Mode` is `synthetic-eight-agent`. The dashboard's **Run the full eight-agent synthetic demo** option creates an eligible task. Ordinary manual tasks, including named-employee assignments, are not executed by the worker.
 
-The worker runs the eight roles sequentially and records stage progress in the dashboard’s `Task Ledger`. Validated final reports are saved in `Run Outputs`. The workflow uses project files to pass information between roles.
+The worker processes one job at a time through the shared eight-role runner. It records stage progress in Sheets and saves validated final reports in `Run Outputs`. When `EMAIL_INTAKE_ENABLED=true`, it also polls Gmail using a read-only grant, stages messages, and runs them through Client Manager classification. Incomplete, suspicious, or held requests remain available for review.
 
-When `EMAIL_INTAKE_ENABLED=true`, the worker also polls Gmail using a read-only grant. It stages new messages and runs them through Client Manager classification. Incomplete, suspicious, or otherwise held messages remain available for review. A sufficiently complete inquiry may proceed through the assessment, but classification and sender-authentication checks still apply.
+## Ollama Cloud execution
 
-## Model execution
-
-For Ollama Cloud, configure these private variables on the worker service:
+Configure these private variables on the Railway worker service:
 
 | Variable | Value |
-|---|---|
+| --- | --- |
 | `CODEX_PROVIDER` | `ollama` |
 | `OLLAMA_BASE_URL` | `https://ollama.com/v1` |
 | `OLLAMA_API_KEY` | Ollama Cloud key, stored in Railway Variables |
-| `CODEX_MODEL` | `gpt-oss:120b` |
-| `AGENT_EXECUTOR` | `ollama-direct` |
+| `CODEX_MODEL` | A supported cloud model, such as `gpt-oss:120b` |
+| `AGENT_EXECUTOR` | `ollama-direct` (default for remote Ollama) |
 
-With this mode, Node.js reads declared role instructions and bounded project inputs, sends a text-only request without model tools, validates a temporary result, and saves the role-owned artifact. Empty, truncated, invalid, or failed responses do not replace existing outputs. Preflight checks project read and write access without calling the model or requiring Linux namespaces.
+These configuration names preserve compatibility; `ollama-direct` does not launch Codex CLI. Node.js reads declared role instructions and bounded project inputs, sends a text-only request without model tools, validates a temporary candidate, and atomically writes the role-owned artifact. Empty, truncated, invalid, or failed responses do not replace existing outputs. Preflight checks project read/write access without a model call or Linux namespace.
 
-Client Manager receives a JSON template and validation feedback. The provider does not enforce a structured-output schema in this path, so invalid results fail validation instead of being silently filled with invented values. Bounded worker retries are available, but successful connectivity or a `/models` response does not prove that preflight or a complete run will succeed.
+Client Manager receives a JSON template and validation feedback. The provider does not enforce a structured-output schema in this path, so invalid results fail validation instead of being silently repaired with invented values. Bounded retries are the recovery path. Successful provider connectivity or a `/models` response does not prove preflight or a complete run. Structural validation does not establish factual accuracy.
 
-No local Ollama installation, gateway, Tailscale tunnel, or personal computer is needed for Ollama Cloud. Keep the Railway worker and its persistent Volume available while work is running.
+No local Ollama installation, gateway, Tailscale tunnel, or personal computer is needed. Keep the Railway worker and its persistent Volume available while work is running.
 
-## Configure the Railway service
+The code retains a CLI execution path for other providers or explicit `AGENT_EXECUTOR=codex`. That mode requires a host supporting the CLI sandbox and is not the active Railway Ollama path.
 
-Create a separate Railway service from the same repository. Keep the dashboard service separate and public; do not expose the worker as the dashboard.
+## Railway configuration
 
-Configure the worker with:
+Deploy the dashboard and worker as separate services. Configure the worker with:
 
-- Root directory: `/`
-- Persistent Volume mounted at `/app/agency/projects`
-- Health-check path: `/health`
-- Required private variables:
-  - `AGENT_WORKER_ENABLED=true` when configuration is ready
-  - `GOOGLE_SPREADSHEET_ID`
-  - `GOOGLE_SERVICE_ACCOUNT_JSON`
-  - The Ollama Cloud variables listed above
-- Optional polling interval: `WORKER_POLL_MS` (defaults to 15 seconds)
+- Root directory `/` so it can build from the repository root.
+- A persistent Volume mounted at `/app/agency/projects` for project files, queue records, Gmail checkpoints, and email-delivery state.
+- Health-check path `/health`; do not expose the worker as the public dashboard.
+- `AGENT_WORKER_ENABLED=true` when configuration is ready.
+- `GOOGLE_SPREADSHEET_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` with access to the configured spreadsheet.
+- The Ollama Cloud variables above.
+- Optional `WORKER_POLL_MS` (default 15 seconds).
 
-The Volume stores project files, queue records, intake checkpoints, and durable email-delivery state. Do not remove it during routine redeploys.
+For Gmail intake, configure `EMAIL_INTAKE_ENABLED=true`, `GMAIL_OAUTH_CREDENTIALS_JSON`, `GMAIL_OAUTH_TOKENS_JSON`, and `GMAIL_PRIVATE_DIR=/app/agency/projects/.worker-state/gmail/private`. These credentials use the read-only intake grant. `GMAIL_POLL_MS` defaults to 60 seconds, with a 15-second minimum. The first poll establishes a baseline and skips messages already in the inbox.
 
-To enable Gmail intake, also configure:
+Cloud customer and Boss email delivery is separately controlled by `EMAIL_DELIVERY_ENABLED`, `BOSS_EMAIL`, and the sending credentials described in [Cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md). The Gmail sending grant is separate from the read-only intake grant. Do not copy the intake token into a sending variable.
 
-- `EMAIL_INTAKE_ENABLED=true`
-- `GMAIL_OAUTH_CREDENTIALS_JSON`
-- `GMAIL_OAUTH_TOKENS_JSON`
-- `GMAIL_PRIVATE_DIR=/app/agency/projects/.worker-state/gmail/private`
-- Optional `GMAIL_POLL_MS` (defaults to 60 seconds, with a 15-second minimum)
-
-Use the existing Gmail read-only grant for intake. Do not use that token for sending.
-
-Cloud customer and Boss email delivery is a separate optional feature. Follow [Cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md) to configure its sending credentials and recipient. It remains disabled unless `EMAIL_DELIVERY_ENABLED=true` and the required delivery settings are supplied. Local customer completion notices use a different policy.
-
-Store keys and tokens only in Railway’s private variables. Check Railway usage and model/API billing before enabling model calls. After deployment, confirm startup logs, `/health`, Sheet access, and provider preflight before submitting a fresh task.
+Store all keys and tokens in Railway's private variables. Never put credentials in task descriptions, source files, logs, or chat. After deployment, review startup logs, `/health`, Sheets access, and provider preflight before submitting a fresh task. Check Railway usage and provider billing before enabling model calls.
 
 ## Run a synthetic job
 
-In the dashboard’s task form, select **Run the full eight-agent synthetic demo** and enter fictional company information. The worker creates a project, runs the roles sequentially, records the stage results, and saves the final report to `Run Outputs`.
+In the dashboard's task form, select **Run the full eight-agent synthetic demo** and enter fictional company information. A named-employee assignment creates a manual task that the worker will not claim. The worker creates a project, runs the roster sequentially, records stage rows, and saves the final report to `Run Outputs`.
 
-If a task remains queued, check its execution mode. If a run stops, review its stage rows, project files, manifest, and worker logs before changing its status. Do not reset it to `Queued` until you understand the existing state and whether any email send may be in progress.
+If a task remains queued, inspect its `Execution Mode`. If a run stops, review stage rows, project files, manifest, and worker logs before changing its status. Do not reset a task to `Queued` until you understand its existing state and whether an email send may be in progress. A failed preflight or blocked stage is not a completed assessment.
 
-## Limits and evidence
+## Operational limits
 
-The worker’s structural checks validate output format and required content; they do not establish factual accuracy, control effectiveness, or compliance. A blocked stage or failed preflight is not a completed assessment.
+- Project and queue durability depend on the worker Volume; keep it through routine redeploys.
+- The dashboard displays stored records; it does not run employee models.
+- Dashboard `Task Ledger`, agency `Ledger`, `Run Outputs`, and `Email Delivery` contain different records.
+- Gmail API acceptance is not proof that a message reached the recipient's inbox. Ambiguous sends require review and must not be blindly replayed.
+- Historical manifests and dashboard rows describe earlier runs. Verify a fresh end-to-end run before claiming current service behavior is successful.
 
-The dashboard `Task Ledger`, agency execution ledger, `Run Outputs`, and `Email Delivery` records serve different purposes. A task status does not prove that a live process ran or an email was delivered. Gmail API acceptance does not prove arrival in the recipient’s inbox. Review ambiguous sends before retrying; deleting delivery state can cause duplicate messages.
-
-Verify a fresh end-to-end run before describing current service behavior as successful. Historical manifests and dashboard rows document earlier runs only.

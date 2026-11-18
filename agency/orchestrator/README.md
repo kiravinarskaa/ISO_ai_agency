@@ -1,6 +1,6 @@
 # Agency file-backed orchestrator
 
-This module owns the file-backed Client Manager `client-intake` queue used by the local launcher and Railway worker. It classifies staged Gmail requests and validates the brief before eligible work enters the shared eight-role runner in `agency/demo/run-demo.mjs`. It is not itself the eight-role roster. The local launcher coordinates Gmail polling and local dispatch; the Railway worker uses a Volume-backed queue and its own Sheets/Gmail adapters. See [architecture](../../ARCHITECTURE.md) and [cloud worker](../../CLOUD-WORKER.md).
+This module owns the file-backed Client Manager `client-intake` queue used by the Railway worker and the retained local launcher. The current deployed workflow uses the Railway worker, which has a Volume-backed queue and Sheets/Gmail adapters. The local launcher is an alternate path, not a Railway dependency. This module classifies staged Gmail requests and validates the brief before eligible work enters the shared eight-role runner in `agency/demo/run-demo.mjs`; it is not itself the roster. See [architecture](../../ARCHITECTURE.md) and [Railway worker](../../CLOUD-WORKER.md).
 
 ## Safety and execution model
 
@@ -66,3 +66,4 @@ node --test .\test\orchestrator.test.mjs
 ```
 
 Tests use temporary directories and a fake guard; they do not invoke a model executor or alter live project/employee records.
+

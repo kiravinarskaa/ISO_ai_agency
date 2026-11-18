@@ -6,7 +6,7 @@
 
 This guide explains how the ISO/IEC 27001 Certification Preparation AI Agency works from a programming perspective.
 
-The project has a shared Node.js eight-role runner plus local and Railway workflow controllers. The local launcher and the Railway worker use the same role roster but have separate intake, queues, storage, dashboards, and reporting paths.
+The deployed operating path is Railway: a public Boss dashboard and a separate private worker call a shared Node.js eight-role runner. The repository also retains a local launcher for development or alternate operation, with separate intake, queues, storage, and reporting. The current Railway workflow does not depend on a local PC, launcher, or dashboard process. See [Architecture](ARCHITECTURE.md) and [Railway worker](CLOUD-WORKER.md).
 
 The most important distinction is:
 
@@ -938,3 +938,4 @@ The ISO/IEC 27001 readiness agency coordinates a shared eight-role workflow thro
 The local notification path and Railway email outbox have different content and attachment rules. Local completion notices omit the report attachment; the cloud outbox can send a validated DOCX when its separate setting and sending grant are configured. Email/API status is distinct from recipient inbox receipt. Current behavior is documented in [local reporting](agency/integrations/reporting/README.md) and [cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md).
 
 Read [README](README.md), [architecture](ARCHITECTURE.md), [dashboard](boss-dashboard/README.md), [worker](CLOUD-WORKER.md), and [runner](agency/demo/README.md) for current operating instructions. The presence of a dashboard or historical run does not establish that every current deployment, coursework requirement, or end-to-end workflow has been verified.
+

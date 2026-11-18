@@ -1,18 +1,11 @@
 # Cloud customer and Boss email delivery
 
-<<<<<<< HEAD
-This is the Railway worker delivery path. It is separate from the older local
-launcher notification policy. The operator requested customer receipt replies,
-full Boss intake details and automatic validated report delivery with Boss CC.
-It is disabled until explicitly configured. No model is used to compose these
-emails or choose recipients.
-=======
 This is the optional Railway worker email-delivery path. It is separate from
 the local launcher's customer-notification policy. When explicitly configured,
 it sends customer receipts, full Boss intake details, and a validated report
 with Boss copied. It is disabled until enabled and configured. No model is used
-to compose these emails or choose recipients.
->>>>>>> 3e4218a (Update documentation)
+to compose these emails or choose recipients. The current deployment uses the
+Railway path; local notification behavior is documented separately.
 
 ## What happens
 
@@ -55,16 +48,18 @@ so a mismatched sending account is rejected. `BOSS_EMAIL` is not guessed from
 the agency sender or the spreadsheet account. The Boss may be a separate inbox
 or the same agency mailbox, as explicitly selected by the operator.
 
-The local reporting integration already supports sending credentials at
+The local reporting integration also supports sending credentials at
 `agency/integrations/reporting/private/gmail-send-credentials.json` and
 `gmail-send-tokens.json`. If using them, copy their contents privately into the
 corresponding Railway variables, without posting them to chat or committing
 them. The sending client and tokens must match. Do not reuse a readonly-only
 token or expand the intake token's scope. If no usable sending grant exists,
-perform the existing reporting send authorization flow for the agency mailbox.
-No key, token or customer body is logged by this feature.
+the repository includes an optional one-time authorization helper for the
+agency mailbox. This is credential provisioning only; it does not run the
+workflow locally. No key, token or customer body is logged by the feature.
 
-If Google rejects the sending refresh token, run on the local PC:
+If Google rejects the sending refresh token, the optional local provisioning
+helper can create a replacement token:
 
 ```powershell
 node agency/integrations/reporting/reporting.mjs authorize-send-isolated
@@ -80,7 +75,9 @@ The state directory is ignored by Git. Existing local integrations continue to
 use their existing files; this command does not switch them to the new token.
 No email is sent by authorization.
 
-To check configuration without sending, reading the mailbox or invoking AI:
+Optional local configuration check (not required for Railway runtime): this
+checks the current machine's configuration without sending email, reading the
+mailbox, or invoking AI.
 
 ```bash
 node --input-type=module <<'NODE'
@@ -94,9 +91,9 @@ try {
 NODE
 ```
 
-This validates local configuration and declared token scopes, not live send
-permission or inbox delivery. After deployment, check for `Cloud email delivery
-enabled` in startup logs. Testing the full flow requires one new inquiry from a
+This validates only local configuration and declared token scopes, not Railway
+configuration, live send permission, or inbox delivery. After deployment, check
+for `Cloud email delivery enabled` in worker startup logs. Testing the full flow requires one new inquiry from a
 mailbox you control. Verify receipt in both inboxes and the final DOCX plus Boss
 CC separately; API acceptance alone does not establish inbox receipt.
 
@@ -142,3 +139,4 @@ make no real sends, read no private credentials and consume no LLM tokens. They
 cover the three-message flow, full original-message attachment, DOCX/CC,
 concurrent delivery, restarts, ambiguous outcomes, rejection limits, unsafe
 headers, recipient changes and report mutations.
+

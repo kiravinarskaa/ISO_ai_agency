@@ -1,6 +1,6 @@
 # Boss Command Center
 
-The Boss dashboard is a Node.js web app with a plain HTML/CSS/JavaScript interface. It is a task and reporting interface; it does not run the eight employee workflow. A separate Railway worker claims only explicitly marked full synthetic runs. See [worker setup](../CLOUD-WORKER.md).
+The Boss dashboard is deployed as a public Railway service. It is a Node.js web app with a plain HTML/CSS/JavaScript interface for tasks and reporting; it does not run the eight employee workflow. A separate private Railway worker claims only explicitly marked full synthetic runs. The deployed workflow does not depend on a locally running dashboard or launcher. See [worker setup](../CLOUD-WORKER.md).
 
 ## Current application areas
 
@@ -25,9 +25,15 @@ The application reads the existing eight-column `Ledger` as a read-only view of 
 
 Do not rename/reorder existing tab headers after the application connects. `Task Ledger`, agency `Ledger`, and `Run Outputs` represent different records and should not be treated as interchangeable.
 
-## Run locally
+## Railway deployment
 
-From this directory, configure the environment and start the service:
+The dashboard service uses this directory as its Railway Root Directory (`/boss-dashboard`) and runs `npm start`. Configure the private variables `BOSS_PASSWORD`, `SESSION_SECRET` (at least 32 characters), `GOOGLE_SPREADSHEET_ID`, and `GOOGLE_SERVICE_ACCOUNT_JSON`. Its health-check path is `/api/health`. The worker is a separate service with its own model configuration, optional Gmail intake, and persistent project Volume; see [CLOUD-WORKER.md](../CLOUD-WORKER.md).
+
+Never commit passwords, service-account JSON, OAuth tokens, or private keys. Share the service-account email on the intended spreadsheet with Editor access.
+
+## Local development (optional)
+
+This section is for development or troubleshooting only. It does not start or control the Railway deployment. From this directory, configure a local environment and start a development instance:
 
 ```powershell
 npm install
@@ -39,12 +45,6 @@ npm start
 ```
 
 Open `http://localhost:3000`. Keep the service-account file outside the repository. The service account needs the Sheets API enabled and Editor access to the spreadsheet.
-
-## Deploy the dashboard
-
-Deploy this directory as the dashboard service, with `/boss-dashboard` as its Railway Root Directory and `npm start` as the start command. Set private variables `BOSS_PASSWORD`, `SESSION_SECRET` (at least 32 characters), `GOOGLE_SPREADSHEET_ID`, and `GOOGLE_SERVICE_ACCOUNT_JSON`. `/api/health` is the dashboard health-check path. The agent worker is a separate service with a different root directory, start command, model configuration, Gmail options, and persistent project Volume; see [CLOUD-WORKER.md](../CLOUD-WORKER.md).
-
-Never commit passwords, service-account JSON, OAuth tokens, or private keys. Share the service-account email on the intended spreadsheet with Editor access.
 
 ## Chat and refresh behavior
 
@@ -65,3 +65,4 @@ Use **Manage run history** to preview, archive, or restore eligible runs. Queued
 ## Verification and limitations
 
 The project includes automated tests for API behavior and page interaction. A DOM-model interaction test is not a substitute for visual browser, accessibility, mobile, or live Railway verification. Verify the active deployment and use a separate test Sheet before testing archive mutations or worker flows. A dashboard health response confirms service availability, not Google Sheets connectivity or successful AI work.
+

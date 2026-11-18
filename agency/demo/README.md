@@ -1,6 +1,6 @@
 # Eight-role readiness runner
 
-`run-demo.mjs` is the shared sequential assessment runner. It is called directly for local project work, by the local launcher for eligible public preliminary assessments, and by the Railway worker for eligible cloud jobs. The launcher and worker provide different intake, queue, reporting, and persistence around the same roster. See [repository architecture](../../ARCHITECTURE.md).
+`run-demo.mjs` is the shared sequential assessment runner. The current deployed workflow calls it through the Railway worker; the local launcher and direct-run commands below are alternate development or recovery paths and are not required for Railway operation. The launcher and worker have separate intake, queues, reporting, and persistence around the same roster. See [repository architecture](../../ARCHITECTURE.md).
 
 ## Run an existing local project
 
@@ -55,3 +55,4 @@ A direct runner command does not trigger reporting. The local launcher can recon
 ## Historical results
 
 Past successful runs are evidence only for those run IDs and environments. For a current end-to-end claim, inspect a fresh run's eight stage records, manifest, final DOCX, Sheets rows, and any expected inbox delivery. A dry run, test suite, health check, or model-list response is not a completed assessment.
+
