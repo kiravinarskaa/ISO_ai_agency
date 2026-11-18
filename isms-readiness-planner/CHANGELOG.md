@@ -1,4 +1,6 @@
-# GTM Engineer: release history
+# Historical inherited kit changelog — former GTM Engineer
+
+This release history predates the workspace's current ISMS Readiness Planner identity. It records upstream kit changes, not releases of the active ISO readiness workflow. Current role behavior is defined by `ROLE.md`, `CONTRACT.md`, and `prepare-readiness-roadmap`.
 
 ## 1.9.0, 2026-10-02
 

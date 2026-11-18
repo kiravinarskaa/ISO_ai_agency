@@ -1,23 +1,19 @@
-# ISO/IEC 27001 Client Manager
+# Client Manager
 
-The Client Manager is the only client-facing employee for an autonomous certification-readiness agency. It receives client information, organizes evidence, identifies gaps, prepares clarification and progress drafts, hands a structured brief to the Project Manager, and prepares the final readiness-package delivery draft.
+The Client Manager receives and classifies supplied readiness information and produces the structured client brief consumed by the other roles. It does not decide certification, verify sender identity, or publish reports.
 
-The agency provides certification-readiness preparation only. An independent certification body makes certification decisions. The Client Manager never claims or implies that a client is certified and never sends communications automatically.
+## Place in the agency workflow
+
+This workspace is the first role in the active roster declared by [`agency/demo/run-demo.mjs`](../agency/demo/run-demo.mjs). The local launcher or Railway worker handles intake and dispatch; the shared runner controls sequencing, project access, validation, and status records. Its routine is `client-intake`; its owned output is `working/client-brief.json` in the selected project. Input files depend on whether the project came from a local project folder or staged Gmail intake.
+
+Customer contact is owned by the local reporting integration or the separately configured Railway email outbox. The Client Manager may identify missing information and classify an inquiry; it does not send the reply itself. Claims in messages remain unverified evidence.
 
 ## Project layout
 
-Projects are stored at `D:\AgentOps\agency\projects\<project-id>`:
+Projects are stored beneath `agency/projects/<project-id>`:
 
-- `client-input`: documents and information supplied by the client.
-- `working`: brief, missing-information review, clarification draft, handoff, and progress draft.
-- `outputs`: approved readiness package and final client delivery draft.
+- `client-input`: source files and supplied information.
+- `working`: the structured brief and downstream role outputs.
+- `logs/demo-runs/<run-id>/`: role records and the workflow manifest.
 
-## Routines
-
-`client-intake`, `client-input-review`, `client-clarification-draft`, `project-handoff`, `client-progress-update`, and `final-readiness-delivery`. Read `CONTRACT.md`, `ROLE.md`, `SCHEDULE.md`, and the routine's `SKILL.md` before use. The guard is `node scripts/guard.mjs <routine-id>`.
-
-The runtime scripts provide local scheduling guards, run state, run logging, and work-cycle receipts. No external network, email, CRM, or browser access is required.
-
-## Project-scoped run logs
-
-Set `CLIENT_MANAGER_PROJECT_ID` to the established project ID for the run, or pass the path explicitly with `--log`. Guard and routine records then use `D:\AgentOps\agency\projects\<project-id>\logs\client-manager-runlog.jsonl`; explicit `--log` takes precedence. Project IDs remain runtime configurable, and the existing `client-manager\runlog.jsonl` is preserved.
+The shared runner executes this role before the Planner, Evidence, Technical Controls, Awareness, Corrective Actions, Metrics, and Project Manager roles. Read [`ROLE.md`](ROLE.md), [`CONTRACT.md`](CONTRACT.md), [`AGENTS.md`](AGENTS.md), and [`routines/client-intake/SKILL.md`](routines/client-intake/SKILL.md) for this role's instructions. The full local and Railway paths are in the [repository architecture](../ARCHITECTURE.md).

@@ -1,8 +1,8 @@
 # Gmail read-only connector and Client Manager intake
 
-This local Node.js connector uses Google's `googleapis` client and `google-auth-library` OAuth client. It requests only `https://www.googleapis.com/auth/gmail.readonly`; it does not modify messages, send email, or contact clients.
+This guide covers the local Gmail intake connector. It uses Google's `googleapis` client and `google-auth-library` OAuth client and requests only `https://www.googleapis.com/auth/gmail.readonly`. The intake grant does not modify messages or send email. Customer notices use a separate sending grant and policy.
 
-Updated 6 November 2026. This connector is read-only; customer sending belongs to the separate reporting bridge described in [customer responses](../../CUSTOMER-RESPONSES.md).
+The same read-only intake module is used by the local launcher and the optional Railway worker. The local `gmail.mjs` / `intake-poller.mjs` commands below are operator tools: running the poller alone stages and queues Client Manager classification but does not run the eight-role assessment. `agency/start-agency.mjs` coordinates local polling and dispatch. `agency/cloud-worker.mjs` can poll and dispatch from Railway when `EMAIL_INTAKE_ENABLED=true`; see [worker setup](../../../CLOUD-WORKER.md). Customer sending is a separate integration; the cloud worker can also send a validated DOCX when its independent delivery policy is enabled.
 
 ## Authorization
 
@@ -46,7 +46,9 @@ Public preliminary processing has a separate classification gate: only a current
 }
 ```
 
-The project ID and current classification must match the decision. The launcher and eight-agent runner both recheck this ledger at dispatch; changing classification invalidates the prior decision. Employee processes receive only the selected project folder, not this review ledger. This decision authorizes preliminary preparation only; it does not verify sender identity, client claims, certification, or compliance.
+The project ID and current classification must match the decision. The launcher and eight-role runner both recheck this ledger at dispatch; changing classification invalidates the prior decision. Employee processes receive only the selected project folder, not this review ledger. This decision authorizes preliminary preparation only; it does not verify sender identity, client claims, certification, or compliance.
+
+The intake poller records attachment metadata and does not execute or download customer attachments as assessment input. The optional Railway cloud email-delivery path may separately attach the original email (`.eml`) to the configured Boss notice, including original attachments; this is a distinct, explicitly enabled delivery action described in [Cloud email delivery](../reporting/CLOUD-EMAIL.md).
 
 ## PowerShell commands
 

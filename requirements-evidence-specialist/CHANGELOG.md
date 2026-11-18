@@ -1,4 +1,6 @@
-# SEO/AEO Employee: release history
+# Historical inherited kit changelog — former SEO/AEO Employee
+
+This release history predates the workspace's current Requirements and Evidence Specialist identity. It records upstream kit changes, not releases of the active ISO readiness workflow. Current role behavior is defined by `ROLE.md`, `CONTRACT.md`, and `build-evidence-register`.
 
 ## 1.10.0, 2026-10-02
 

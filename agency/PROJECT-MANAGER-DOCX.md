@@ -1,12 +1,10 @@
 # Project Manager Word report architecture
 
-Updated 6 November 2026.
-
-Updated 6 November 2026.
+This guide describes the shared runner's PM synthesis and deterministic DOCX export. Deployment and delivery differ by path: the local launcher keeps its customer completion notice link-free and attachment-free, while the optional Railway worker can attach a separately validated customer DOCX under its cloud email policy. See [Cloud email delivery](integrations/reporting/CLOUD-EMAIL.md).
 
 The Project Manager authors the consolidated conclusions and recommendations in `working/final-agency-report.md`. The deterministic Node.js completion stage in `agency/demo/final-report-docx.mjs` packages that synthesis, current execution statuses, and compact source references as `working/final-agency-report.docx`. This is part of the Project Manager delivery stage; no second model or external service is used.
 
-The exporter reads only the eight fixed working artifacts. Client intake inclusion is restricted to assessment fields and excludes raw email and contact metadata. Source material remains unverified; fictional and synthetic labels are preserved. The DOCX uses a macro-free OOXML package with no external relationships. Existing dashboard columns and link-free completion email are unchanged; the Word report remains local and is not attached or published automatically.
+The exporter reads only the eight fixed working artifacts. Client intake inclusion is restricted to assessment fields and excludes raw email and contact metadata. Source material remains unverified; fictional and synthetic labels are preserved. The DOCX uses a macro-free OOXML package with no external relationships. The runner writes the file locally within its project; publication and delivery are owned by the invoking workflow and its configured policies.
 
 After all employee outputs validate, the runner always regenerates the Word report, including on artifact-reuse runs. It records its path, SHA256, byte count and input hashes under `manifest.finalReportDocx`. Export failure sets the run incomplete, preventing final completion publication. Dry runs do not generate a Word report. Existing completed runs require a runner invocation to obtain the new deliverable; the launcher may skip already-completed workflows.
 
@@ -18,7 +16,7 @@ Run from D:\AgentOps:
 node agency/demo/run-demo.mjs --project <project-id>
 ```
 
-No credentials, grants, accounts or paid services are added. Review the local DOCX in Word before external delivery. No outgoing email attachment or dashboard schema changes are authorized by this feature.
+Review the DOCX visually before external delivery. A generated file is not automatically approved for release. The Railway worker's email path performs separate manifest/hash checks before attaching the report; the local workflow does not attach it.
 
 
 ## Management report contract

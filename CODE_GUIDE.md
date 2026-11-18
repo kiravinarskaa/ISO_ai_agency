@@ -6,7 +6,7 @@
 
 This guide explains how the ISO/IEC 27001 Certification Preparation AI Agency works from a programming perspective.
 
-The project consists of eight specialized AI employees, supported by Node.js scripts that coordinate execution, manage files, validate outputs, and communicate with external services.
+The project has a shared Node.js eight-role runner plus local and Railway workflow controllers. The local launcher and the Railway worker use the same role roster but have separate intake, queues, storage, dashboards, and reporting paths.
 
 The most important distinction is:
 
@@ -395,27 +395,13 @@ Our system combines both approaches:
 
 This separation is one of the central design decisions in the project.
 
-## 7. Understanding Codex CLI
+## 7. Understanding model executors
 
-Codex CLI provides the execution environment used for our AI employees.
+The current agency workflow uses Ollama Cloud. Node.js sends bounded role instructions and declared project source text to the chat-completions API without model tools. It validates the candidate response and writes only the role-owned artifact.
 
-Instead of implementing and training a new language model, the project uses an existing AI coding-agent environment.
+The model generates and interprets content; deterministic Node.js code controls routing, input selection, guards, API requests, output validation, retries, manifests, and artifact writes.
 
-Our Node.js infrastructure prepares tasks and launches Codex processes.
-
-A subprocess is a separate program started by another program.
-
-For example, Node.js provides:
-
-```javascript
-import { spawn } from "node:child_process";
-```
-
-The `spawn` function can launch an external executable.
-
-The project uses subprocess execution to invoke AI employee routines.
-
-The calling Node.js process can observe process completion and apply additional checks to the generated output.
+The local launcher and Railway worker both call the shared runner. The model path is Ollama Cloud; local and cloud controllers own separate queues, state, and reporting integrations. Node.js communicates with Ollama over HTTPS and does not mark a task complete until it validates and saves the declared artifact.
 
 Importantly, a successful process exit does not necessarily mean that the employee produced an accurate or complete security assessment.
 
@@ -446,7 +432,7 @@ File:
 
 `agency/demo/run-demo.mjs`
 
-This is the main entry point for the fixed eight-employee demonstration and the guarded specialist execution used by the continuous public intake launcher. The routine is not a continuously polling service.
+This is the shared entry point for the fixed eight-role workflow. It does not poll continuously. The local launcher and Railway worker call it after their own intake and queue checks.
 
 Its responsibilities include:
 
@@ -478,14 +464,14 @@ This means a completed demo does not necessarily represent eight new LLM executi
 
 ### Continuous launcher: `start-agency.mjs`
 
-For the actual public email workflow, the main process is `agency/start-agency.mjs`:
+For the local Gmail workflow, the controller is `agency/start-agency.mjs`:
 
 ```powershell
 cd D:\AgentOps
 node .\agency\start-agency.mjs
 ```
 
-It does more than call the runner: it repeatedly checks Gmail, dispatches eligible Client Manager intake tasks, reconciles completed intake records, checks classification and data sufficiency, and initiates guarded downstream work for eligible projects. It can resume previously staged work without resending email.
+It polls Gmail, dispatches eligible Client Manager intake tasks, reconciles classification and data sufficiency, and starts guarded downstream work for eligible projects. This runs locally in the foreground. A separate `agency/cloud-worker.mjs` process implements the Railway queue, optional Gmail intake, Sheets progress, recovery, and optional customer/Boss email delivery. The public dashboard is a separate service and does not run the employees. See [Architecture](ARCHITECTURE.md) and [Railway worker](CLOUD-WORKER.md).
 
 Conceptually, the launcher behaves like this simplified pseudocode (not the exact source):
 
@@ -648,11 +634,11 @@ Its intake permissions are read-only.
 
 ### Intake poller
 
-The poller processes eligible incoming messages.
+The poller processes eligible incoming messages. Running the local poller alone stages and enqueues classification; the local launcher or Railway worker supplies dispatch.
 
 It performs deterministic operations such as polling, filtering, and deduplication.
 
-Downstream Client Manager work can then use AI-assisted interpretation. The continuous launcher reconciles completed classifications, then may trigger the seven specialists for an eligible, bounded **public preliminary** project. Held messages do not become eligible solely because their contents look complete.
+Downstream Client Manager work uses the configured model executor. The local launcher or Railway worker reconciles completed classifications, then may trigger the remaining seven roles for an eligible public preliminary assessment. Held messages do not become eligible solely because their contents look complete.
 
 ### Why is email untrusted?
 
@@ -892,7 +878,7 @@ These questions will help you understand both the programming and the architectu
 |---|---|
 | AI agent | A system that uses an AI model to pursue assigned objectives, potentially using tools |
 | LLM | Large Language Model; a model trained to process and generate language |
-| Codex CLI | The command-line AI coding-agent environment used to execute employee tasks |
+| Ollama Cloud | Hosted model API used by the active eight-role workflow |
 | Orchestrator | Software that coordinates tasks and their execution |
 | Subprocess | A program started by another running program |
 | Prompt | Instructions and context supplied to an AI model |
@@ -929,7 +915,7 @@ A functioning implementation needs infrastructure for:
 - Recording results.
 - Integrating with external systems.
 
-Our ISO/IEC 27001 AI Agency coordinates a local eight-employee workflow. A recovered run reached eight validated outputs and generated a Word report on 6 November 2026. Sheets publication, internal completion-email receipt and a customer acknowledgment were demonstrated. These are separate observations; complete customer clarification and final customer notice have not both been confirmed. Individual test counts belong to their code revisions, not a single aggregate current result.
+The ISO/IEC 27001 readiness agency coordinates a shared eight-role workflow through two controllers. `agency/start-agency.mjs` runs local Gmail intake and dispatch with file-backed state. `agency/cloud-worker.mjs` runs separately on Railway, claims full synthetic dashboard jobs and can optionally poll Gmail, write Sheets progress, and send customer/Boss email. The public Boss dashboard is another service; it displays recorded task and run state but does not execute the roles. Both controllers call `agency/demo/run-demo.mjs`.
 
 **The AI employees generate and interpret information. The surrounding software makes their work coordinated, traceable, and subject to operational controls.**
 
@@ -937,15 +923,18 @@ Our ISO/IEC 27001 AI Agency coordinates a local eight-employee workflow. A recov
 
 *This guide describes the educational implementation and uses simplified examples where indicated. The actual JavaScript source and its tests remain the authoritative reference for executable behavior.*
 
-## Current implementation additions as of 6 November 2026
+## Current implementation map (18 November 2026)
 
 - `agency/demo/management-report-contract.mjs`: validates the PM management-report sections and finding fields.
-- `agency/demo/final-report-docx.mjs`: local Node.js OOXML export of the PM synthesis with source references. Structural checks do not replace visual review.
+- `agency/demo/final-report-docx.mjs`: Node.js OOXML export of the PM synthesis with source references. Structural checks do not replace visual review.
 - `agency/demo/recover-evidence-revision.mjs`: explicit operator recovery for supported stale completed reports after source changes, preserving archived leases and spent budgets.
 - `agency/start-agency.mjs`: detects newer completed local recovery manifests after exhausted agent-validation retries and resumes authorized reporting. It also filters terminal noise and displays console time in Asia/Tashkent.
-- `agency/integrations/reporting/reporting.mjs`: fixed customer acknowledgment, clarification and completion notices with sender/thread checks and separate dedupe ledgers. Customer sending can explicitly reuse the existing send grant under policy.
-- Public daily intake/execution quotas are disabled. Deduplication, sequential execution, task retry limits and employee guards remain.
+- `agency/integrations/reporting/reporting.mjs`: local Sheets and notification policies, with sender/thread checks and separate dedupe ledgers.
+- `agency/integrations/reporting/cloud-email-delivery.mjs`: separate Railway durable email outbox for receipt, Boss intake notice, and validated customer DOCX delivery with Boss copied.
+- `agency/orchestrator/ollama-direct.mjs`: direct text-only Ollama executor where Node.js owns bounded reads, validation, and writes.
+- `agency/cloud-worker.mjs`: Railway Sheets queue, optional Gmail intake, stage progress, recovery sync, and optional cloud email delivery.
+- Public daily intake/execution quotas are disabled. Deduplication, sequential execution, task retry limits, employee guards, and explicit classification/review gates remain.
 
-The earlier approval steps describe the manual reporting path. Standing workflow policies support unattended reporting without asking for approval on every message. Internal completion bodies currently carry a fictional-test label and omit links/report text. Customer bodies omit internal project references, links and attachments.
+The local notification path and Railway email outbox have different content and attachment rules. Local completion notices omit the report attachment; the cloud outbox can send a validated DOCX when its separate setting and sending grant are configured. Email/API status is distinct from recipient inbox receipt. Current behavior is documented in [local reporting](agency/integrations/reporting/README.md) and [cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md).
 
-Read [README](README.md), [architecture](ARCHITECTURE.md), [reporting](agency/integrations/reporting/README.md) and [customer responses](agency/CUSTOMER-RESPONSES.md) for current operating instructions. Neither Sheets execution rows nor a local Word export establish that the full hosted Boss Command Center required by the assignment is complete.
+Read [README](README.md), [architecture](ARCHITECTURE.md), [dashboard](boss-dashboard/README.md), [worker](CLOUD-WORKER.md), and [runner](agency/demo/README.md) for current operating instructions. The presence of a dashboard or historical run does not establish that every current deployment, coursework requirement, or end-to-end workflow has been verified.

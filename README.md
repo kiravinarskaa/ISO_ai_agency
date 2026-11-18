@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ISO IEC 27001 2022 Readiness Assessment AI Agency
 
 Documentation updated 6 November 2026.
@@ -95,3 +96,76 @@ The course additionally requires a publicly hosted authenticated Boss dashboard,
 - [Word report contract](agency/PROJECT-MANAGER-DOCX.md)
 
 The implementation adapts the [ai-employees template](https://github.com/markfulton/ai-employees). Preserve upstream license notices and confirm license/attribution files before redistribution. This workspace was not initialized as a Git repository at the documentation review. Existing ignore rules are not a publication security audit: review policies, generated reports, configuration and the exact upload set before publishing. Do not commit credentials, authorization tokens, customer inputs or local authorization records.
+=======
+# ISO/IEC 27001 Readiness Assessment AI Agency
+
+Documentation reconciled with the workspace source on 18 November 2026. Start with [Architecture and workflow](ARCHITECTURE.md) for the full system map.
+
+This educational prototype organizes supplied information and prepares readiness-planning materials. It does not conduct an accredited certification audit, certify an organization, or establish compliance. Customer statements and synthetic evidence remain unverified unless independently supported.
+
+## Current architecture
+
+The repository has a shared Node.js eight-role runner with two operating paths:
+
+- **Local:** a foreground Windows launcher polls Gmail, stages and classifies eligible messages, runs guarded workflow stages, and coordinates policy-authorized reporting. Local projects and workflow state are stored in files.
+- **Railway:** a public Boss dashboard and a separate worker service use Google Sheets for dashboard tasks and progress. The worker can run explicitly marked synthetic tasks and, when enabled, Gmail intake. It uses the same eight-role runner and stores persistent state on a Railway Volume.
+
+The dashboard does not run employee work. Ordinary manual or named-employee assignments are recorded for visibility but are not claimed by the current worker. The worker's full-run path requires the task's execution mode to be `synthetic-eight-agent`.
+
+The active roster is Client Manager, ISMS Readiness Planner, Requirements/Evidence Specialist, Technical Controls Analyst, Security Awareness Specialist, Corrective Action Specialist, Readiness Metrics Analyst, and Project Manager. Stages run sequentially and exchange context through owned project files. Node.js handles orchestration, security and validation checks, recovery, manifests, and DOCX packaging. The active model path is Ollama Cloud; Node.js sends bounded project context and validates and writes each role's output.
+
+## Local quick start
+
+Use the existing Node.js installation, configured project workspace, and authorized accounts. Run from the repository root:
+
+```powershell
+node agency/integrations/gmail/gmail.mjs check-config
+node agency/integrations/gmail/gmail.mjs verify
+node agency/integrations/reporting/reporting.mjs check-config
+node agency/start-agency.mjs
+```
+
+Keep one launcher running. Its first Gmail poll establishes a baseline and skips existing Inbox messages; use a fresh test request after the baseline. Stop with Ctrl+C. The launcher is foreground software and is not automatically registered with Windows startup.
+
+To run an existing project directly:
+
+```powershell
+node agency/demo/run-demo.mjs --project <project-id> --dry-run
+node agency/demo/run-demo.mjs --project <project-id>
+```
+
+Use an existing ID beneath `agency/projects`. Dry run inspects eligibility and dependencies but does not run models or prove completion. The direct runner does not publish Sheets data or send email; those are coordinated by the launcher or separately authorized tools. See [runner and recovery guide](agency/demo/README.md).
+
+## Railway workflow
+
+Deploy the dashboard and worker as separate services. The dashboard serves the authenticated Boss Command Center. The worker needs `AGENT_WORKER_ENABLED=true`, valid Sheets and model configuration, and a persistent Volume mounted at `/app/agency/projects`. `EMAIL_INTAKE_ENABLED=true` enables its separate Gmail polling path. The worker claims only full-run task rows marked `synthetic-eight-agent`; manual assignments are not executed.
+
+The Railway worker uses Ollama Cloud with `CODEX_PROVIDER=ollama`, HTTPS `OLLAMA_BASE_URL=https://ollama.com/v1`, `OLLAMA_API_KEY`, `CODEX_MODEL`, and `AGENT_EXECUTOR=ollama-direct` (the default for remote Ollama). Node.js sends bounded source and instruction text without model tools, validates the candidate, and saves the owned artifact. See [cloud worker setup](CLOUD-WORKER.md).
+
+The optional cloud email-delivery path is controlled separately by `EMAIL_DELIVERY_ENABLED` and its Boss recipient and Gmail send credentials. It can send a fixed customer receipt, a Boss intake notice with original message material, and a validated final DOCX to the authenticated customer with Boss copied. See [Cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md). Local customer completion notices follow a different policy and do not attach the report.
+
+## Outputs and evidence boundaries
+
+Each role owns a file beneath `agency/projects/<project-id>/working/`. A run manifest and per-role records are saved under `logs/demo-runs/<run-id>/`. A completed run requires all eight accepted outputs and a successful `final-agency-report.docx` export. Validated unchanged outputs may be reused, so “completed” does not necessarily mean eight new model calls.
+
+Structural validation checks format and required sections; it does not independently verify claims, control effectiveness, or remediation. Missing evidence is not proof that a control is absent. Reports need human factual and visual review before external use. Read [Project Manager DOCX contract](agency/PROJECT-MANAGER-DOCX.md) and [Security](SECURITY.md).
+
+The Sheets execution ledger and dashboard task ledger are different records. The agency ledger records eight role outcomes per run. The dashboard's `Task Ledger` records assigned work and worker stages; other dashboard tabs store chat, report outputs, archive events, and optional email statuses. A task status alone does not prove a live process or email delivery.
+
+## Documentation map
+
+- [Architecture and workflow](ARCHITECTURE.md) — source-of-truth system map and end-to-end paths.
+- [Railway worker](CLOUD-WORKER.md) — service setup, provider modes, queue eligibility, and Gmail intake.
+- [Boss dashboard](boss-dashboard/README.md) — features, Sheets tabs, chat, history, local run, and deployment.
+- [Eight-role runner](agency/demo/README.md) — dependencies, execution, artifacts, validation, and recovery.
+- [Gmail intake](agency/integrations/gmail/README.md) — mailbox screening, staging, classification, and routing.
+- [Reporting](agency/integrations/reporting/README.md) — local Sheets and notification policies.
+- [Cloud email delivery](agency/integrations/reporting/CLOUD-EMAIL.md) — Railway customer/Boss delivery and durable send state.
+- [Security](SECURITY.md) and [Code guide](CODE_GUIDE.md).
+
+Role workspaces may also contain inherited routines and reference material outside the active readiness workflow. Only the eight role/routine pairs in `agency/demo/run-demo.mjs` are invoked by the assessment runner. Other files may be historical kit material, example evidence, or optional integrations; their presence does not add a workflow stage. The optional n8n files describe a separate scaffold and do not replace the local launcher or Railway worker.
+
+## Verification status
+
+Code tests and local/provider checks verify only the paths they exercise. A current end-to-end claim requires checking the deployed revision, an eligible fresh job, all eight stage results, the final manifest and DOCX, Sheets publication, and inbox receipt where email delivery is enabled. Review the relevant run records; do not infer success from an old dashboard row, health endpoint, model-list response, or historical demo.
+>>>>>>> 3e4218a (Update documentation)

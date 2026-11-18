@@ -1,10 +1,18 @@
 # Cloud customer and Boss email delivery
 
+<<<<<<< HEAD
 This is the Railway worker delivery path. It is separate from the older local
 launcher notification policy. The operator requested customer receipt replies,
 full Boss intake details and automatic validated report delivery with Boss CC.
 It is disabled until explicitly configured. No model is used to compose these
 emails or choose recipients.
+=======
+This is the optional Railway worker email-delivery path. It is separate from
+the local launcher's customer-notification policy. When explicitly configured,
+it sends customer receipts, full Boss intake details, and a validated report
+with Boss copied. It is disabled until enabled and configured. No model is used
+to compose these emails or choose recipients.
+>>>>>>> 3e4218a (Update documentation)
 
 ## What happens
 

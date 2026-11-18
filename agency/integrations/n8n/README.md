@@ -1,6 +1,8 @@
-# n8n + local agents
+# Optional n8n integration scaffold
 
-This adds n8n as the Gmail/Google Sheets/internal email coordinator while keeping Codex agents on this Windows PC. The local worker only binds to loopback, validates a bearer token, and uses the existing Gmail intake staging and orchestrator queue. Customer text stays untrusted; unknown senders stay unverified. It does not create permanent client accounts.
+This directory describes an alternate, optional local integration scaffold. It is not the default workflow, is not required by `agency/start-agency.mjs`, and does not describe the Railway dashboard/worker services. The active model path is Ollama Cloud; the primary architecture is documented in [Architecture](../../../ARCHITECTURE.md). Configure and verify this integration separately before use.
+
+This alternate scaffold uses n8n as the Gmail/Google Sheets/internal email coordinator with a local Node.js worker. The local worker only binds to loopback, validates a bearer token, and uses the existing Gmail intake staging and orchestrator queue. Customer text stays untrusted; unknown senders stay unverified. It does not create permanent client accounts.
 
 ## Current boundary
 

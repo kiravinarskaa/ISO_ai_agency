@@ -1,6 +1,6 @@
-# Reporting and customer email bridge
+# Local reporting and customer response bridge
 
-Updated 6 November 2026. Run examples from `D:\AgentOps\agency\integrations\reporting`, or prefix the module path when running from the workspace root.
+This guide describes the local `start-agency.mjs` reporting path and its explicit Sheets/customer-notice policies. Run examples from `D:\AgentOps\agency\integrations\reporting`, or prefix the module path when running from the workspace root. The Railway worker has a separate durable email-delivery path documented in [Cloud email delivery](CLOUD-EMAIL.md); that path can attach a validated customer DOCX when enabled.
 
 ## What is published
 
@@ -8,7 +8,7 @@ The ledger has exactly these columns: `run_id`, `project_id`, `employee_id`, `ro
 
 Automatic reporting requires an operator-created workflow policy bound to the configured spreadsheet, tab and internal recipient. Public preliminary local completion alone is not publication permission. The launcher prepares quietly; manual preparation displays rows for review. The existing eight-column execution ledger does not meet every task-ledger field in the course assignment.
 
-Internal completion mail includes employee statuses but no dashboard link, full report or attachment. The current template explicitly labels the message fictional/test and must be reviewed before real-customer operation. Customer notices use separate composition and recipient checks.
+Local internal completion mail includes employee statuses but no dashboard link, full report or attachment. The current template explicitly labels the message fictional/test and must be reviewed before real-customer operation. Local customer notices use separate composition and recipient checks; they arrange report review and do not attach the report. The Railway cloud email path is separate and has its own opt-in and validation rules.
 
 ## Reuse credentials and configuration
 

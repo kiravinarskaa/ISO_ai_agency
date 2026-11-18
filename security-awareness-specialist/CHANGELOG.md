@@ -1,4 +1,6 @@
-# Social Media Employee: release history
+# Historical inherited kit changelog — former Social Media Employee
+
+This release history predates the workspace's current Security Awareness Specialist identity. It records upstream kit changes, not releases of the active ISO readiness workflow. Current role behavior is defined by `ROLE.md`, `CONTRACT.md`, and `prepare-awareness-plan`.
 
 ## 1.9.0, 2026-10-02
 

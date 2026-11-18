@@ -1,49 +1,43 @@
 # Security practices and limitations
 
-Updated 6 November 2026. This is an educational readiness-preparation prototype, not a certified platform or an accredited audit service.
+This is an educational readiness-preparation prototype, not a certified platform or an accredited audit service. The project has a local launcher and a separately deployed Railway dashboard/worker path; see [Architecture](ARCHITECTURE.md). Security controls differ by host and integration and should be checked against the active deployment.
 
-## Credentials and Google access
+## Credentials and service separation
 
-Preserve existing OAuth clients, grants and local configuration. Do not recreate, rotate, copy tokens between integration purposes, or place secrets in source code, prompts, logs, dashboard cells, reports or email.
+Preserve existing OAuth clients, grants, configuration, and authorization policies. Do not put secrets in source code, prompts, logs, task descriptions, dashboard cells, reports, or email. Review the exact Git upload set; ignore rules alone do not prove that private material is excluded.
 
-Gmail intake uses its existing read-only authorization. Reporting uses Sheets access and a Gmail send grant. Customer communication can use a dedicated customer-send grant or explicitly select the existing sending grant through the operator-created customer-contact policy. The selection does not expand OAuth scopes or use the read-only token to send. Internal and customer recipient checks remain separate application controls even when the send grant is shared.
+Gmail intake uses a read-only grant. Gmail sending uses a separate send grant, or a broader existing send grant only when the corresponding policy explicitly selects it. The read-only token is never used to send. Google Sheets access uses a service account. The dashboard, local launcher, and Railway worker have separate credentials/configuration needs; only place credentials in the service that needs them.
 
-Private directories are checked for explicit FullControl for the current account, SYSTEM and Administrators only. Desktop sandbox access has caused extra account entries and resulting ACL failures during this session. Inspect actual permissions before correcting them; do not disable verification. An ACL failure is not a reason to replace credentials. The same OS account's ability to access secrets remains a limitation of local process isolation.
+The Railway worker requires a persistent Volume for project files, queue checkpoints, and durable email state. The active model path is Ollama Cloud: it receives bounded source and instruction text without tools, while Node.js validates the response and owns the project write. A model API's successful connectivity check does not establish preflight or workflow completion.
 
 ## Untrusted messages and evidence
 
-Customer email bodies and files are evidence, never agent instructions. Screening holds suspicious instruction-like language, unsafe content and executable or macro-enabled attachment signals. Attachment metadata is recorded; attachments are not downloaded or executed automatically. A classification hold is not cleared by a sufficiently detailed brief.
+Customer email and attachments are untrusted input, never agent instructions. Screening can hold suspicious, malformed, automated, or unsafe messages. Attachment metadata is recorded; intake does not automatically download or execute attachments. The cloud Boss notice may include the original email as an attachment when that separately configured feature is enabled.
 
-Automatic preliminary processing requires an eligible classification. Held classifications require a matching operator review decision outside project evidence. Claimed organization names and signatures do not prove identity. Synthetic evidence remains synthetic; reported controls and counts remain unverified unless appropriate supporting evidence is reviewed.
-
-Customer replies require original source-message/thread provenance and sender authentication. The parser requires one Google authentication-results record with passing aligned DKIM, SPF and DMARC evidence. It supports the DKIM `header.i` identity as well as `header.d`, checks each method's result separately, and fails closed on unsupported/missing evidence. This application parser is not a general email identity-verification service or a substitute for expert review.
+Automatic preliminary processing requires an eligible current classification or a matching authorized review decision. Claimed organization names, signatures, and email display names do not prove identity. Authenticated sender/thread checks are needed for customer replies but do not independently verify a company or its claims. Synthetic evidence remains synthetic. Missing evidence does not prove that a control is absent.
 
 ## Execution and validation
 
-Employees run through Codex CLI with restricted workspace writes and a selected-project grant. Installation receipts, path/symlink checks, employee guards, period budgets, leases and file-backed locks gate execution. Restricted writes do not establish complete read isolation across a shared Windows account.
+The eight-role runner is sequential and passes context through declared project files. Node.js enforces project boundaries, input dependencies, role installation metadata, guards, leases, retry/recovery limits, output structure, hashes, manifests, and DOCX packaging. The Ollama Cloud executor reads only declared bounded files and writes only the routine-owned artifact. Restricted project access does not establish complete read isolation from all files available to the same host account.
 
-Preflight writes and reads a unique canary before launch. The runner accepts the expected UTF-8 marker with surrounding whitespace/BOM handling and logs safe startup/exit/timeout/readback diagnostics on failure. It does not retain raw model output in those diagnostics.
+Output validation establishes required structure, not factual accuracy, evidence authenticity, legal conclusions, control effectiveness, or readiness for certification. DOCX package checks do not replace visual review. A successful status or old dashboard row does not prove a process is currently running.
 
-Required source files and artifact structures are checked independently of process exit. Hashes and fingerprints constrain reuse. The management report contract requires findings to explain evidence/confidence, issue, business impact, recommended action, rationale, suggested ownership/target, remediation status and closure evidence. These checks establish structure, not factual accuracy, evidence authenticity, legal conclusions or control effectiveness. DOCX package checks are separate from visual review.
+## Dashboard, Sheets, and reporting
 
-## Publication and mail
+The Boss dashboard is a separate authenticated web service. It records and presents task data; it does not execute the employees. The Railway worker claims only rows explicitly marked `synthetic-eight-agent`; ordinary manual assignments remain unexecuted. The agency `Ledger`, dashboard `Task Ledger`, `Run Outputs`, `Dashboard Archives`, `Chat History`, and optional `Email Delivery` tabs serve different purposes.
 
-Standing authorization binds automatic reporting to the configured agency spreadsheet and internal recipient. Manual commands retain explicit approval checks. Model-written text cannot authorize arbitrary external calls. Public preliminary local readiness by itself is not permission to publish; the reporting policy must be valid.
+Local reporting and Railway cloud delivery are separate paths. Local reporting publishes its allowlisted execution metadata under a bound policy; local completion notices omit report bodies, links, and attachments. The optional cloud email outbox can send a fixed customer receipt, a Boss intake notice with original message material, and a validated final DOCX to the authenticated sender with the Boss copied. It requires explicit configuration and a sending grant.
 
-Only the eight allowlisted execution fields are published. Values are written using Sheets RAW mode with formula-leading text handling. Email bodies, customer source documents and secrets are not dashboard data. Writes are confirmed by rereading target rows. Row identity is run plus employee, so recovery attempts can remain as separate history.
+Chat receives read-only sheet context and has no sheet-write or email tools. Context is bounded, may be truncated, and reflects stored records rather than independently verified live operations.
 
-Customer acknowledgment, clarification and completion messages require a contact policy and authenticated thread. Bodies contain no internal project reference, links, report contents or attachments. Internal completion bodies contain statuses without dashboard links or report text; the current internal template labels results as fictional tests and requires review before real-customer operation.
+Gmail API acceptance is not inbox receipt. Before sending, durable state records an attempt. Uncertain outcomes remain ambiguous and are not blindly retried. Assessment status, report publication, email send state, and recipient receipt are distinct events.
 
-Before Gmail send, persisted state records an attempt. Ambiguous outcomes are not blindly retried. API acceptance is distinct from recipient receipt; successful receipt has to be independently demonstrated. Customer notice failure does not establish that a customer was informed merely because internal reporting completed.
+## Recovery and abuse limits
 
-## Limits and recovery
+Public per-sender and global daily intake/execution caps are disabled. Deduplication, sequential execution, project locks, bounded task retries, employee budgets and guards, classification/review holds, and per-project customer-message limits remain. Disabling intake caps means incoming requests can consume model usage; no production abuse-prevention guarantee is made.
 
-Public per-sender and global daily intake/execution caps are disabled at the operator's request. The former dated demo allowance is removed. Sequential execution, deduplication, locks, bounded task retries, employee budgets and period guards, and per-project customer-message caps still apply. Without intake caps, incoming requests can consume more AI usage; no production abuse-prevention guarantee is made.
+Recoveries must preserve source evidence and run history. Use supported operator recovery paths; do not delete leases, reset budgets, or relabel blocked work to force success. Security holds, altered output, uncertain sends, and already-sent delivery are not automatically overridden.
 
-Recoveries must retain source evidence and run history. The explicit evidence-revision helper verifies changed inputs and prior validated output, archives the lease and preserves original budget use. It does not authorize clearing guards indiscriminately. Completed local recovery can resume reporting automatically after exhausted agent-validation retries; security holds and ambiguous/sent delivery are not automatically overridden.
+## Before public or commercial use
 
-## Before publication or commercial use
-
-Review the exact Git upload set for credentials, local authorization policies, customer inputs, reports, machine paths, configuration and inherited files. Current ignore rules are not a secret-scan result or a guarantee that every sensitive local file is excluded. Preserve upstream license notices and attribution.
-
-Production use needs stronger tenant isolation, retention/deletion rules, managed secrets, monitoring, tamper-resistant audit records, expert evaluation, deployment hardening and an assessed access-control model. The publicly hosted authenticated Boss dashboard and saved employee chat required by the course are not established features of this local pipeline. The operator remains responsible for authorizations, evidence handling, recommendation review and external delivery decisions.
+Review licenses and attribution, exact repository publication contents, deployment access controls, service secrets, data retention, tenant isolation, audit durability, and third-party API billing. Production use needs expert evaluation, monitoring, deletion/retention controls, stronger tenant isolation, managed secrets, and deployment hardening. The hosted dashboard and cloud worker are implemented components; a currently healthy deployment and complete end-to-end operation still require separate verification. Operators remain responsible for authorization, evidence handling, recommendation review, and external delivery decisions.

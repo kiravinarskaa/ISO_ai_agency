@@ -1,37 +1,57 @@
-# Eight-employee readiness runner
+# Eight-role readiness runner
 
-Updated 6 November 2026. The existing `run-demo.mjs` is the fixed eight-role runner used by both direct local commands and the launcher's eligible public preliminary lane.
+`run-demo.mjs` is the shared sequential assessment runner. It is called directly for local project work, by the local launcher for eligible public preliminary assessments, and by the Railway worker for eligible cloud jobs. The launcher and worker provide different intake, queue, reporting, and persistence around the same roster. See [repository architecture](../../ARCHITECTURE.md).
+
+## Run an existing local project
+
+From the repository root:
 
 ```powershell
-cd D:\AgentOps
 node agency/demo/run-demo.mjs --project <project-id> --dry-run
 node agency/demo/run-demo.mjs --project <project-id>
 ```
 
-Supply an existing project ID. Dry runs inspect setup, dependencies, receipts and guards without executing employees or generating the final Word report. Real runs execute sequentially and may reuse unchanged validated outputs; eight accepted outputs do not imply eight fresh AI calls.
+Use an existing ID beneath `agency/projects`. The dry run inspects configuration, project dependencies, installation receipts, guards, and intended execution without running employees or generating the final Word report. A real run may incur model usage and can reuse unchanged validated artifacts.
 
-The runner uses Codex CLI workspace-write mode with the employee directory as working directory and the selected project as an additional write grant. It preserves user Codex configuration. It validates required inputs, installation receipts, guard eligibility, restricted-write preflight and output structures. Safe preflight diagnostics distinguish process startup, timeout, exit and readback failures without dumping model output.
+The active workflow uses Ollama Cloud. The runner sends bounded role instructions and declared source text to the Ollama API without model tools; Node.js validates the response and writes the routine-owned artifact. Provider connectivity does not prove a successful employee preflight or completed workflow. See [Railway worker setup](../../CLOUD-WORKER.md).
 
-To run with a local Ollama model, start Ollama on this PC, pull a model supported by Codex CLI, and set `CODEX_PROVIDER=ollama` plus `CODEX_MODEL=<ollama-model-tag>` in the same terminal before running the demo. The runner selects Codex CLI's `--oss --local-provider ollama` mode and keeps the restricted workspace-write sandbox.
+## Active roster and outputs
 
-For Railway to use Ollama on your PC, run `node agency/ollama-gateway.mjs` with a generated `OLLAMA_GATEWAY_TOKEN`, then expose only that gateway using Tailscale Funnel: `tailscale funnel --https=443 http://127.0.0.1:11435`. Funnel provides a stable HTTPS tailnet URL and is available on all Tailscale plans; it requires HTTPS/MagicDNS and Funnel enabled for your tailnet. The local gateway checks a bearer token and forwards only `/v1` traffic to Ollama. Never expose Ollama's port 11434 directly. Set Railway `CODEX_PROVIDER=ollama`, `CODEX_MODEL=gpt-oss:20b`, `OLLAMA_BASE_URL=https://<machine>.<tailnet>.ts.net/v1`, and `OLLAMA_API_KEY` to the same random token used by `OLLAMA_GATEWAY_TOKEN`. The PC, Ollama, gateway, and Funnel must stay online while work runs. Test one preflight before adding tasks to the live queue.
+The authoritative roster and declared dependencies are in `run-demo.mjs`:
 
-To use Groq's hosted model API, set `CODEX_PROVIDER=groq`, `CODEX_MODEL=openai/gpt-oss-20b`, and `GROQ_API_KEY` before starting the worker or demo. A short-lived loopback bridge removes request fields Groq does not support, then streams the Responses API result back to Codex; the Groq key stays in the worker process and Codex receives only a temporary local token. The workspace-write sandbox remains enabled. Store `GROQ_API_KEY` as a Railway service variable, never in a committed file. Provider quotas can block or delay a run; test preflight before processing queued work.
+1. Client Manager — `working/client-brief.json`
+2. ISMS Readiness Planner — `working/isms-readiness-plan.md`
+3. Requirements/Evidence Specialist — `working/evidence-register.md`
+4. Technical Controls Analyst — `working/technical-controls-assessment.md`
+5. Security Awareness Specialist — `working/awareness-training-plan.md`
+6. Corrective Action Specialist — `working/corrective-action-register.md`
+7. Readiness Metrics Analyst — `working/readiness-dashboard.md`
+8. Project Manager — `working/final-agency-report.md`
 
-Each attempt writes `logs/demo-runs/<run-id>/manifest.json` and per-employee records. `completed`, `reused-validated`, `blocked`, `failed` and dry-run results have distinct meanings. The current PM roster allows optional specialist paths to support blocker reports, but final overall completion still requires all eight accepted employee outputs.
+The sequence is fixed, but downstream roles read only the files declared in their roster inputs. They do not share a hidden model conversation. The PM can create a blocker report with optional specialist paths absent, but the overall run still requires all eight accepted outputs.
 
-## Word report
+Each run records a manifest and per-role records beneath `logs/demo-runs/<run-id>/`. The manifest distinguishes `completed`, `incomplete`, dry-run, blocked, and failed work and records validation and output hashes. Reuse of an unchanged accepted output is recorded; a completed run does not necessarily mean eight new model calls.
 
-Project Manager writes `working/final-agency-report.md`. New PM executions receive the management report contract: executive summary, source basis, findings/impact, completed work/remediation status, recommendations, roadmap, metrics limitations and employee contributions. Every numbered finding needs evidence/confidence, issue, impact, action, rationale, suggested owner/target, remediation status and closure evidence.
+## Validation and report export
 
-On a real completed run, Node.js packages that synthesis into `working/final-agency-report.docx` with native Word tables and compact source references. It records source hashes, output hash, byte count and pending visual-review status in `manifest.finalReportDocx`. Export failure makes the run incomplete. Existing validated historical reports are not silently rewritten to the new writing contract. Visual inspection remains necessary before external delivery.
+Node.js checks project boundaries, declared input dependencies, role installation metadata, guards, executor preflight, output structure, required evidence sections, management-report requirements, and output integrity. It then packages the PM synthesis as `working/final-agency-report.docx`. Export failure leaves the overall run incomplete. Checks are structural: they do not verify client claims, prove controls operate, or establish certification. Review report facts and rendered layout before external delivery.
 
-## Recovery and reporting
+The customer DOCX is an allowlisted projection of the internal PM synthesis. See [customer report generation](CLIENT-REPORT.md) and the [Word report contract](../PROJECT-MANAGER-DOCX.md). The cloud worker attaches a validated DOCX only when its separate email-delivery policy is enabled; the local completion notice does not attach the report.
 
-Do not run a second launcher or direct runner while project work is active. Preserve sources and history. A stale in-progress claim needs investigation and supported partial completion, not deletion. A completed daily claim with changed inputs requires a deliberate evidence revision rather than a routine reset.
+## Intake and reporting boundaries
 
-The operator helper `recover-evidence-revision.mjs <project-id>` previews supported Metrics/PM recovery. `--apply` archives the original lease and reopens partial work only after confirming a prior unchanged validated output and changed source hashes, with original spent budget retained. Its revision allowance is bounded. Confirm no project work is active first. This helper does not recover every kind of failure.
+The direct runner operates on an existing project. It does not poll Gmail, publish Sheets rows, or send email by itself. The local `agency/start-agency.mjs` launcher coordinates Gmail intake, local queue dispatch, and policy-authorized reporting. The Railway worker has its own persistent queue, optional Gmail polling, Sheets progress, and separate optional email outbox. The local Gmail poller by itself stages and queues classification work but does not run the full roster.
 
-A direct runner command itself does not publish Sheets or send email. With valid authorization, the launcher can detect a newer completed recovery manifest after exhausted agent-validation retries and resume reporting automatically. Already-sent or ambiguous delivery is not blindly replayed. Earlier run IDs remain historical attempts in Sheets; they are not overwritten as though they never happened.
+Public preliminary work rechecks the current classification and any authorized review decision before specialist dispatch. Sender and organization claims remain unverified. Email content is untrusted input; evidence requests or questions do not count as supplied facts.
 
-No cloud service or automatic Windows startup is installed by these commands. See [customer responses](../CUSTOMER-RESPONSES.md), [reporting](../integrations/reporting/README.md) and [architecture](../../ARCHITECTURE.md).
+## Recovery
+
+Do not start a second runner/launcher against a project with active work. Preserve source files, manifests, and history. Use the supported retry or recovery paths described by the orchestrator and launcher; do not delete leases, reset budgets, or relabel a blocked task to force completion.
+
+The operator helper `recover-evidence-revision.mjs <project-id>` previews supported Metrics/PM evidence revision recovery. `--apply` is limited to its documented cases and requires no project work to be active. It preserves the original claim and spent budget. It is not a general-purpose recovery for every failure.
+
+A direct runner command does not trigger reporting. The local launcher can reconcile certain newer completed manifests after exhausted validation retries, subject to independent validation and authorization policy. The cloud worker has separate reconciliation for validated email workflow reports and dashboard rows. Sent or ambiguous delivery is never blindly replayed.
+
+## Historical results
+
+Past successful runs are evidence only for those run IDs and environments. For a current end-to-end claim, inspect a fresh run's eight stage records, manifest, final DOCX, Sheets rows, and any expected inbox delivery. A dry run, test suite, health check, or model-list response is not a completed assessment.

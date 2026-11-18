@@ -1,6 +1,8 @@
-# Automated customer intake and reporting
+# Local automated intake and reporting
 
-`start-agency.mjs` runs the workflow controller. It polls Gmail read-only, stages and classifies new requests, runs the Client Manager, and reconciles the result. Eligible new-client requests proceed through eight guarded routines. If required company details are missing, the workflow can send a fixed-form clarification in the original email thread, ingest an authenticated reply into the same project, and resume classification. After all outputs validate, it updates the existing Sheets ledger during execution, publishes the final report rows, and sends the full report to the configured internal recipient.
+This guide is for the Windows foreground launcher and its local reporting policy. Railway has separate dashboard/worker services, queues, credentials, and optional customer/Boss report delivery; see [architecture](../ARCHITECTURE.md), [worker setup](../CLOUD-WORKER.md), and [cloud email delivery](integrations/reporting/CLOUD-EMAIL.md). Configuring this local policy does not configure the Railway services, and Railway settings do not start this launcher.
+
+`start-agency.mjs` runs the local workflow controller. It polls Gmail read-only, stages and classifies new requests, runs the Client Manager, and reconciles the result. Eligible new-client requests proceed through the shared eight-role runner. If required company details are missing, the workflow can send a fixed-form clarification in the original email thread, ingest an authenticated reply into the same project, and resume classification. After all outputs validate, it updates the existing Sheets ledger during execution, publishes final report rows, and can send an internal completion email with role statuses. The local internal email does not contain the full report or DOCX attachment.
 
 Customer-provided email text remains untrusted data. The system does not treat organization names or claims as verified. Ambiguous, suspicious, spam, automated, attachment-bearing, or unauthenticated replies stay in review. Clarification email is limited to approved missing-information labels, the same Gmail thread, and two requests per project. It does not send the report to the customer.
 
@@ -25,7 +27,7 @@ Create the standing internal reporting authorization after confirming the exact 
 node .\reporting.mjs setup-automatic-workflow-policy --by 'Authorized Operator' --confirm-spreadsheet-id '<exact configured spreadsheet ID>' --confirm-to 'csagencyai@gmail.com' --attest-agency-owned true
 ```
 
-This policy authorizes internal dashboard progress, final validated report publication, and delivery of the report to that fixed internal recipient. It does not authorize customer email.
+This policy authorizes internal dashboard progress, final validated report publication, and a status-only completion email to that fixed internal recipient. It does not authorize customer email or attach the report.
 
 ## Configure automated clarification replies
 
@@ -61,4 +63,4 @@ Run the synthetic test suite from `D:\AgentOps\agency`:
 node --test .\test\start-agency.test.mjs .\orchestrator\test\orchestrator.test.mjs .\demo\test\*.test.mjs .\integrations\gmail\test\*.test.mjs .\integrations\reporting\test\*.test.mjs
 ```
 
-The tests use temporary projects and fake Gmail, employee, and Sheets adapters. They do not contact Google, run Codex, send mail, or update the live dashboard.
+The tests use temporary projects and fake Gmail, model, and Sheets adapters. They do not contact Google, call Ollama Cloud, send mail, or update the live dashboard.

@@ -1,12 +1,12 @@
-# Customer response workflow
+# Local customer response workflow
 
-Updated 6 November 2026.
+This guide describes customer acknowledgments, clarification, and completion notices sent by the local launcher under its customer-contact policy. It does not describe the separate Railway worker email outbox; see [Cloud email delivery](integrations/reporting/CLOUD-EMAIL.md).
 
 ## Responses and timing
 
 The launcher attempts a fixed acknowledgment after successful Client Manager classification and the security gate. Missing required information can trigger a readable clarification request. After a validated assessment and internal report delivery, a customer completion notice arranges report review and an agreed delivery method. Acknowledgment is not instant inbox receipt; it depends on intake processing.
 
-Customer bodies have no internal project reference, dashboard link, report contents or attachment. Questions are drawn from approved missing-information fields. Notices do not claim certification, control effectiveness or verified remediation. Reports remain local until a separate authorized delivery process is agreed.
+Local customer bodies have no internal project reference, dashboard link, report contents or attachment. Questions are drawn from approved missing-information fields. Notices do not claim certification, control effectiveness or verified remediation. The local completion notice arranges report review; it does not attach the DOCX. The optional Railway delivery path can send a separately validated customer DOCX only when its own email-delivery setting and credentials are configured.
 
 ## Existing sending grant
 
@@ -45,4 +45,4 @@ A customer acknowledgment was confirmed received during the 6 November session. 
 node --test agency/integrations/reporting/test/customer-notices.test.mjs agency/integrations/reporting/test/reporting.test.mjs agency/test/start-agency.test.mjs
 ```
 
-The PC must remain awake and the launcher running. Customer email support does not provide cloud hosting, a Boss dashboard or automatic startup.
+The PC must remain awake and the local launcher running for this path. The Railway dashboard and worker are separate services; enabling either does not start the local launcher.

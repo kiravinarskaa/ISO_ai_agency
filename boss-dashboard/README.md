@@ -1,94 +1,67 @@
-# ISO 27001 AI Agency Boss Dashboard
+# Boss Command Center
 
-This app is the Boss Command Center for the eight-employee agency. It is a small
-Node.js web app with plain HTML, CSS, and browser JavaScript so the page stays
-easy to read and change.
+The Boss dashboard is a Node.js web app with a plain HTML/CSS/JavaScript interface. It is a task and reporting interface; it does not run the eight employee workflow. A separate Railway worker claims only explicitly marked full synthetic runs. See [worker setup](../CLOUD-WORKER.md).
 
-## What it does
+## Current application areas
 
-- Lets the Boss sign in with one password.
-- Adds tasks to a Google Sheet task ledger.
-- Shows task status, priority, employee, deadline, blocker reason, and result link.
-- Filters tasks by employee, status, priority, and date.
-- Shows eight employee cards and daily/weekly totals based on recorded tasks.
-- Exports the visible task list as CSV.
-- Saves Project Manager and employee chat history in another Sheet tab.
-- Answers task questions from the ledger itself. If a reason or result is absent
-  from the Sheet, the answer says so instead of guessing.
+- **Overview:** current run and task status, agency team summaries, and time-based counts from recorded rows.
+- **Client requests:** staged or classified email inquiries visible through their task records.
+- **Projects & tasks:** assigned task records, project/run scope, filters, status and blockers.
+- **Team:** the eight active roles and their recorded work.
+- **Reports:** validated PM outputs available from recorded `Run Outputs` data.
+- **History:** superseded or archived run visibility. Archiving changes dashboard visibility; it does not delete, cancel, or rewrite task, execution-ledger, report, or worker-queue records.
+- **Ask the team:** model-backed answers from the selected task scope, with role-specific scope. The Project Manager may see the full selected run. The model receives read-only context and has no action tools.
 
-The app reads the Sheet on opening or signing in, immediately when you return
-to its tab or browser window, and every 15 seconds while the page is visible.
-It also refreshes after the browser reconnects to the internet.
-"Active" means that an employee has
-an In Progress task recorded. The dashboard does not itself run Codex. A separate
-Railway worker can run the full eight-agent synthetic coursework workflow and
-write each stage's progress back to the Sheet. See the repository's
-[`CLOUD-WORKER.md`](../CLOUD-WORKER.md) for its separate Railway service setup.
+Dashboard status is a reflection of stored records. It does not by itself prove that a model is currently running, that a report was delivered, or that a recipient received email. Chat answers use available sheet evidence and should identify missing or truncated context.
 
-Boss sign-in and the dashboard layout do not depend on Google Sheets or agent
-availability. If the Sheet is empty, counts show zero and the task list is empty.
-If the Sheet is disconnected, the dashboard still opens with an offline notice;
-actions that write tasks or chat are disabled until the connection is restored.
+## Google Sheets data
 
-## Google Sheet tabs
+The application reads the existing eight-column `Ledger` as a read-only view of agency role executions. Manual dashboard assignments and worker stage rows use `Task Ledger`; ordinary manual rows remain unexecuted by the worker. The worker creates or updates these other tabs as needed:
 
-The existing Ledger tab remains untouched. It continues to hold the agency's
-eight employee execution rows.
+- `Chat History` — saved dashboard chat messages.
+- `Run Outputs` — final report data from completed worker runs.
+- `Dashboard Archives` — run visibility archive/unarchive events.
+- `Email Delivery` — separate cloud delivery statuses when email delivery is configured.
 
-On first use, the app creates these tabs if they do not exist:
+Do not rename/reorder existing tab headers after the application connects. `Task Ledger`, agency `Ledger`, and `Run Outputs` represent different records and should not be treated as interchangeable.
 
-- Task Ledger for assigned tasks and their status history.
-- Chat History for saved chat messages.
-- Run Outputs for final reports created by the optional cloud worker.
+## Run locally
 
-The first row of each new tab contains its column names. Do not rename or reorder
-those headings after the app has connected.
+From this directory, configure the environment and start the service:
 
-The dashboard also reads the existing eight-column `Ledger` tab, which the
-agency workflow updates with each employee's run status. Those rows appear in
-the same task list and employee cards as automatic workflow tasks. This is a
-read-only view; manual assignments continue to be stored in `Task Ledger`.
+```powershell
+npm install
+$env:BOSS_PASSWORD = "choose-a-long-private-password"
+$env:SESSION_SECRET = "replace-with-at-least-32-random-characters"
+$env:GOOGLE_SPREADSHEET_ID = "your-spreadsheet-id"
+$env:GOOGLE_SERVICE_ACCOUNT_JSON = Get-Content "service-account.json" -Raw
+npm start
+```
 
-## Run on your computer
+Open `http://localhost:3000`. Keep the service-account file outside the repository. The service account needs the Sheets API enabled and Editor access to the spreadsheet.
 
-From this directory, install dependencies and set the environment variables:
+## Deploy the dashboard
 
-    npm install
-    $env:BOSS_PASSWORD = "choose-a-long-private-password"
-    $env:SESSION_SECRET = "replace-with-at-least-32-random-characters"
-    $env:GOOGLE_SPREADSHEET_ID = "your-spreadsheet-id"
-    $env:GOOGLE_SERVICE_ACCOUNT_JSON = Get-Content "service-account.json" -Raw
-    npm start
+Deploy this directory as the dashboard service, with `/boss-dashboard` as its Railway Root Directory and `npm start` as the start command. Set private variables `BOSS_PASSWORD`, `SESSION_SECRET` (at least 32 characters), `GOOGLE_SPREADSHEET_ID`, and `GOOGLE_SERVICE_ACCOUNT_JSON`. `/api/health` is the dashboard health-check path. The agent worker is a separate service with a different root directory, start command, model configuration, Gmail options, and persistent project Volume; see [CLOUD-WORKER.md](../CLOUD-WORKER.md).
 
-Open http://localhost:3000. Keep service-account.json outside this repository.
-The service account needs the Google Sheets API enabled and Editor access to the
-spreadsheet.
+Never commit passwords, service-account JSON, OAuth tokens, or private keys. Share the service-account email on the intended spreadsheet with Editor access.
 
-## Deploy on Railway
+## Chat and refresh behavior
 
-1. Add a Railway service connected to this GitHub repository.
-2. In the service Settings, set Root Directory to /boss-dashboard.
-3. Set its start command to npm start (Railway can also read the package script).
-4. Add these private variables in Railway's Variables panel:
-   - BOSS_PASSWORD
-   - SESSION_SECRET (at least 32 characters)
-   - GOOGLE_SPREADSHEET_ID
-   - GOOGLE_SERVICE_ACCOUNT_JSON (the complete service-account JSON)
-5. Deploy. /api/health is the service health-check path.
+Task summaries refresh while the page is visible. The current task snapshot is cached briefly across browsers; archive history and full-sheet chat context use separate caches. The UI may not show short-lived stages that begin and finish between polls.
 
-Never put passwords, service-account JSON, OAuth tokens, or private keys in Git.
-The service-account email must be shared on the spreadsheet with Editor access.
+**Ask the team** uses the configured Ollama endpoint for a natural-language response grounded in the selected dashboard task scope and recent chat messages. It makes a model request only when the user submits a question. No write or email tools are given to the model. Provider and configuration failures are surfaced as errors.
 
-## Chat behavior
+The workbook chat context can include `Ledger`, `Task Ledger`, `Chat History`, `Run Outputs`, `Dashboard Archives`, and `Email Delivery`. It reads existing tabs without creating missing ones. All rows are read, while evidence sent to the model is bounded per tab; row counts, unavailable tabs, and truncation are disclosed. Answers are prompted to cite tab names and source row numbers. Sheet content can be stale and cannot independently verify email delivery.
 
-Chat history is saved in the Chat History tab. Current replies are deterministic
-and based on Task Ledger; they do not call another model. The supported questions
-cover task counts, running tasks, blocked tasks and reasons, and most completions
-this week. Questions outside those records receive an explicit limitation.
+For dashboard AI chat, configure `OLLAMA_BASE_URL`, `OLLAMA_API_KEY`, and `DASHBOARD_CHAT_MODEL` on the public dashboard service. This uses Ollama Cloud directly. Reuse Railway variable references where possible; never put keys in source files.
 
-## Railway cost note
+## Run history
 
-Railway's Free plan includes a monthly usage credit, not unlimited compute. The
-dashboard is request-driven; a separate continuously running Codex worker may use
-more than the free credit. Review Railway usage before enabling a worker service.
+Current shows the newest recorded run for each project plus all queued/running work. History contains superseded and manually archived runs. The run selector scopes metrics, cards, reports, tasks, CSV export, and new chat questions. Existing saved chats retain their original contents.
 
+Use **Manage run history** to preview, archive, or restore eligible runs. Queued/running work is rejected by the server. Archive events are appended to `Dashboard Archives`; underlying task and execution rows remain intact. A run with a blocked stage remains blocked even if other stages completed. Archive/restore changes visibility only.
+
+## Verification and limitations
+
+The project includes automated tests for API behavior and page interaction. A DOM-model interaction test is not a substitute for visual browser, accessibility, mobile, or live Railway verification. Verify the active deployment and use a separate test Sheet before testing archive mutations or worker flows. A dashboard health response confirms service availability, not Google Sheets connectivity or successful AI work.

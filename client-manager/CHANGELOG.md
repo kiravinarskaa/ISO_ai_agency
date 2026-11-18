@@ -1,4 +1,6 @@
-# Sales Employee: release history
+# Historical inherited kit changelog — former Sales Employee
+
+This release history predates the workspace's current Client Manager identity. It records upstream kit changes, not releases of the active ISO readiness workflow. Current role behavior is defined by `ROLE.md`, `CONTRACT.md`, and the `client-intake` routine.
 
 ## 1.9.0, 2026-10-02
 

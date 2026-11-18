@@ -1,58 +1,97 @@
-# Agency architecture
+# Architecture and workflow
 
-Updated 6 November 2026. Active source code is authoritative where older notes describe a previous stage.
+Last reconciled with the workspace source: 18 November 2026. This document describes the repository's implemented application architecture. Deployment configuration and live service state can change independently; a successful configuration or health check does not prove an end-to-end assessment completed.
 
-## Components
+## System at a glance
 
-| Layer | Implementation | Responsibility |
-|---|---|---|
-| Entry point | `agency/start-agency.mjs` | Polling, intake reconciliation, dispatch, progress and reporting recovery |
-| Gmail intake | `agency/integrations/gmail/intake-poller.mjs` | Screening, deduplication, source staging, sender checks and reply routing |
-| Intake worker | `agency/orchestrator/orchestrator.mjs` | File-backed Client Manager tasks, bounded retries, restricted execution and brief validation |
-| Eight-role runner | `agency/demo/run-demo.mjs` | Sequential specialist dispatch, dependency checks, artifact reuse and manifests |
-| Employee workspaces | Eight role directories | Instructions, routines, guards, leases and logging infrastructure |
-| Reporting bridge | `agency/integrations/reporting/reporting.mjs` | Allowlisted Sheets records and policy-authorized internal/customer mail |
-| Management report | `agency/demo/management-report-contract.mjs`, `final-report-docx.mjs` | Required PM report content and local OOXML packaging |
-| Project storage | `agency/projects/<project-id>/` | Source files, working artifacts, runtime state and history |
+The application has a shared Node.js workflow core and two ways to operate it:
 
-## End-to-end flow
+1. **Local agency workflow:** `agency/start-agency.mjs` runs as a foreground process on Windows. It polls Gmail, stages and classifies new requests, dispatches guarded work, and coordinates authorized Sheets reporting and local customer notices. State and project files are on the local filesystem.
+2. **Railway workflow:** the public Boss dashboard (`boss-dashboard/`) and the private agent worker (`agency/cloud-worker.mjs`) are separate services. The dashboard handles user sessions and task views. The worker polls its Google Sheets queue and, when enabled, Gmail. Both the local launcher and worker call the same eight-role runner. The worker stores project and queue state on a persistent Railway Volume.
 
-1. The launcher polls the configured Gmail mailbox. Initial polling establishes a baseline. New messages pass screening and duplicate checks.
-2. Relevant requests are isolated in staged `INTAKE-*` folders. The Client Manager extracts and classifies the request, preserving source attribution and uncertainty.
-3. Reconciliation checks required context and the current security classification. Explicit supplied statements may repair omitted structured fields; clarification requests do not count as supplied facts. Public customer identity remains unverified.
-4. Eligible work runs Client Manager -> Planner -> Evidence -> Technical Controls -> Awareness -> Corrective Actions -> Metrics -> Project Manager. Execution is sequential, but data dependencies follow the explicit roster input lists rather than every arrow in that sequence.
-5. Node.js validates outputs and records statuses, hashes and dependency fingerprints. Successful unchanged artifacts can be reused. Each actual employee launch requires installation, guard and restricted-write preflight checks.
-6. The PM authors a management report. Node.js packages the synthesis and compact source references into DOCX. Export failure keeps final completion incomplete; visual review is separately pending until actually performed.
-7. Under configured standing authorization, progress and final records are upserted to Sheets and an internal completion email is sent. Customer notices additionally require a customer-contact policy and original sender/thread authentication.
+The dashboard does not execute employee work. It records manual tasks for visibility and can submit an explicitly marked full synthetic run for the worker. Ordinary manually assigned or named-employee tasks are not claimed by the current worker.
 
-AI interpretation happens through Codex CLI. Operational authorization, sequencing, validation and integration calls are deterministic JavaScript. A guard script is not an AI employee. Employees exchange local files, not one shared conversation.
+## Components and ownership
 
-## Storage and boundaries
+| Component | Owns |
+| --- | --- |
+| `agency/start-agency.mjs` | Local polling loop, intake reconciliation, workflow dispatch, and policy-authorized local reporting recovery |
+| `agency/integrations/gmail/intake-poller.mjs` | Read-only mailbox access, screening, deduplication, staging, classification tasks, and authenticated reply routing |
+| `agency/orchestrator/orchestrator.mjs` | File-backed Client Manager queue, leases, guards, preflight, retries, brief validation, and execution adapter selection |
+| `agency/demo/run-demo.mjs` | Fixed eight-role roster, sequential execution, dependency and artifact checks, reuse, manifests, and final report handoff |
+| `agency/orchestrator/ollama-direct.mjs` | Active Ollama Cloud text request path; Node.js bounds source reads, validates the response, and owns artifact writes |
+| `agency/demo/final-report-docx.mjs` | Deterministic packaging of the PM report as DOCX |
+| `agency/cloud-worker.mjs` | Railway health endpoint, Sheets task queue, optional Gmail polling, worker progress, report publishing, recovery synchronization, and optional email delivery |
+| `boss-dashboard/` | Authenticated dashboard UI/API, task assignment and views, run history, archives, chat, and Sheets access |
+| `agency/integrations/reporting/` | Local Sheets/reporting policy and customer notices; separate cloud delivery module handles the Railway worker email outbox |
+| `agency/projects/<project-id>/` | Inputs, working artifacts, employee run records, manifests, and recovery history |
 
-`client-input` contains supplied sources. `working` holds the brief, specialist reports, Markdown synthesis and Word export. `logs/demo-runs/<run-id>/manifest.json` records each attempt. `.employee-runtime` holds project-scoped employee claims and budgets. Integration and workflow state reside outside employee-owned report artifacts.
+The active assessment roster is declared in `agency/demo/run-demo.mjs`. It is Client Manager, ISMS Readiness Planner, Requirements/Evidence Specialist, Technical Controls Analyst, Security Awareness Specialist, Corrective Action Specialist, Readiness Metrics Analyst, and Project Manager. Some employee workspaces also retain routines and reference material from the inherited employee kit. Only the role/routine pairs named in `ROSTER` are selected by the assessment runner; the presence of other routines does not add a stage or grant their actions to the ISO workflow. Other repository directories also contain backups, coursework examples, or optional integrations.
 
-The runner uses `codex exec --sandbox workspace-write`, an employee working directory and the selected project as an additional write directory. This constrains writes; it is not proof of complete read isolation from every other file accessible to the same OS account. Credentials must remain protected by host permissions and kept out of prompts.
+## Shared eight-role workflow
 
-Public daily intake/execution quotas are disabled. Sequential dispatch, locks, duplicate checks, retry limits, employee period/budget guards and customer-message caps remain. An optional synthetic sender lane exists separately; ordinary public intake does not require that allowlist.
+The runner processes roles sequentially. It passes context through declared project files, not hidden shared model conversation. The fixed dependency order is:
 
-## Recovery
+```text
+Client Manager
+  -> ISMS Readiness Planner
+  -> Requirements/Evidence Specialist
+  -> Technical Controls Analyst
+  -> Security Awareness Specialist
+  -> Corrective Action Specialist
+  -> Readiness Metrics Analyst
+  -> Project Manager
+  -> structural validation and DOCX export
+```
 
-Failed prerequisites can block downstream employees. Current Project Manager inputs include optional specialist paths, so it can produce a blocker report; this does not make an incomplete overall run successful. Reuse checks compare source and output hashes. A PM report may be reused across successful-status label changes when its sources are unchanged, retaining its historical execution context.
+Each role owns one required output under the selected project's `working/` directory. The Project Manager may write a blocker report when optional inputs are absent, but an overall completed run still requires all eight accepted outputs and a successful DOCX export. Unchanged validated artifacts can be reused; a completed run therefore need not represent eight fresh model calls.
 
-For a completed employee whose evidence changed, the operator revision recovery helper verifies changed upstream hashes and a prior unchanged validated output, archives the original claim, and preserves budget consumption before reopening partial work. It is bounded to the helper's supported roles and revision count. Never use it while project work is active.
+Node.js controls paths, input snapshots, installation/role instructions, execution guards, leases, preflight, bounded retry/recovery, schema and structural checks, hashes, manifests, and output writes. These checks do not establish factual accuracy, control effectiveness, certification, or customer identity. Source statements and synthetic examples remain identified as unverified or synthetic.
 
-The launcher recognizes a newer completed local recovery after an exhausted `AGENT_VALIDATION_INCOMPLETE` workflow and resumes reporting with preserved recovery history. It does not automatically override security holds, ambiguous sends or already-sent delivery. Final publication still passes the reporting bridge's independent checks.
+## Intake and execution paths
 
-## Reporting and communication
+### Local launcher
 
-Sheets uses eight execution columns and `(run_id, employee_id)` keys. Different attempts retain separate rows. Publishing minimal metadata does not publish the underlying reports. Markdown filenames in a sheet are not evidence of accessible hosted download URLs.
+1. Start `node agency/start-agency.mjs` in the configured Windows workspace.
+2. Gmail polling establishes a baseline on its first cycle; later cycles screen unseen mail and stage qualifying messages. The intake OAuth grant is read-only.
+3. Client Manager classifies the staged inquiry. Suspicious, incomplete, or otherwise held requests remain in review. A public preliminary request can proceed only under its current classification or a matching authorized review decision.
+4. Eligible work runs through the shared roster. The launcher can publish ledger progress/final metadata and send configured internal/customer notices under separate policies.
+5. The process remains foreground and local; stopping it stops polling and dispatch. Durable files allow supported recovery after restart.
 
-Internal completion emails carry statuses without links or report bodies. Their current template is explicitly test-labeled. Customer replies are fixed plain text, omit internal references, and stay in the authenticated original thread. Acknowledgments follow intake classification, not instant message arrival. Clarification is bounded to two messages per project; acknowledgment and completion use separate dedupe ledgers. The customer policy may explicitly choose the existing Gmail send grant; there is no silent credential fallback.
+The local poller and local launcher are distinct entry points. Running `intake-poller.mjs poll` alone stages/enqueues work; it does not start the eight-role runner. The launcher coordinates polling and dispatch.
 
-## Deployment and demonstrated scope
+### Railway dashboard and worker
 
-The current runtime is local Windows Node.js with file-backed state, Codex CLI and Google APIs. The PC must be awake and the launcher running. It is not a deployed cloud service or a complete publicly hosted Boss dashboard. n8n is optional and not required by the launcher.
+The dashboard and worker are separately deployed Railway services. The dashboard writes user-assigned task rows to `Task Ledger`, reads that tab plus the existing eight-column `Ledger`, and presents progress. The worker is not exposed as a public application; `/health` is its health endpoint.
 
-A recovered eight-output completion, Word generation, Sheets integration, internal completion receipt and customer acknowledgment were demonstrated. End-to-end customer clarification and final customer notice remain unconfirmed together. Tests validate selected behaviors, not ISO conformity or production readiness.
+The worker can claim rows explicitly marked `synthetic-eight-agent`. It creates stage rows, runs the shared roster sequentially, records stage progress, and stores validated final reports in `Run Outputs`. It does not execute ordinary `manual` assignments. When `EMAIL_INTAKE_ENABLED=true`, it also polls Gmail, classifies staged inquiries, and dispatches eligible email assessments. A persistent Volume is required for projects, queue checkpoints, and delivery state to survive container replacement.
 
-The course's online Boss login, task assignment, saved employee chat, task-ledger fields, daily/weekly reporting and report export remain separate implementation/submission requirements. See [README](README.md) and [security](SECURITY.md).
+The active worker model path is Ollama Cloud with `AGENT_EXECUTOR=ollama-direct`. The model receives bounded instruction/source text without tools; Node.js validates the returned candidate and writes only the routine-owned artifact. Provider reachability or `/models` access alone does not establish preflight or a complete run.
+
+When separately enabled and configured, the worker's email outbox sends a fixed receipt to the authenticated sender, an intake notice with original message material to the explicitly configured Boss, and the validated final DOCX to the customer with Boss copied. This cloud path is distinct from local customer completion notices, which do not attach the report. Delivery state is persisted and reported separately from assessment status.
+
+## Integrations and data boundaries
+
+- Gmail intake uses read-only OAuth. Sending uses a separately configured Gmail send grant; the intake token is not used to send.
+- Google Sheets access uses the configured service account. The agency execution ledger is an eight-column run/employee ledger; the dashboard's `Task Ledger` is a different schema for assigned tasks and their stage records.
+- The dashboard may also use `Chat History`, `Run Outputs`, `Dashboard Archives`, and `Email Delivery` tabs. Chat context is read-only; dashboard archives record visibility changes and do not rewrite task or execution rows.
+- Employee processes receive selected project context and their role instructions. They do not own external email or Sheets publication.
+- Customer email content is untrusted. Claims, names, signatures, and model-produced addresses are not proof of identity. Authenticated sender/thread checks and explicit policy gates control replies.
+- The cloud email outbox stores delivery events and status on the worker Volume. Gmail API acceptance is not proof of inbox delivery. Ambiguous sends require review and are not blindly replayed.
+
+## Deployment and verification boundaries
+
+Local execution requires the PC and launcher to remain available. Railway dashboard hosting does not make the local launcher a cloud service. Railway worker processing requires its service enabled, valid provider and Sheets configuration, a persistent Volume, and an eligible queue row. Gmail polling and cloud email sending are separate opt-in settings.
+
+No individual successful test, provider check, health endpoint, manifest, or dashboard status alone proves the complete live workflow. Verify current deployment revision, a fresh eligible task, each stage result, final manifest and DOCX, Sheets state, and any email in its recipient inbox before claiming end-to-end completion. Historical verification is described with its date and scope in the relevant guides.
+
+## Related guides
+
+- [Project overview and local quick start](README.md)
+- [Railway worker configuration](CLOUD-WORKER.md)
+- [Dashboard operation and deployment](boss-dashboard/README.md)
+- [Eight-role runner and recovery](agency/demo/README.md)
+- [Gmail intake](agency/integrations/gmail/README.md)
+- [Reporting and local customer responses](agency/integrations/reporting/README.md)
+- [Railway customer/Boss email delivery](agency/integrations/reporting/CLOUD-EMAIL.md)
+- [Security and limitations](SECURITY.md)
