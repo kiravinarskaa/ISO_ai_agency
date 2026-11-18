@@ -17,6 +17,43 @@ const state = { tasks: [], runs: [], view: "current", runKey: "", archiveAvailab
   runStatus: "all", runSearch: "",
   selectedRuns: new Set(), pendingArchive: null, conversationId: getConversationId("pm"), refreshing: false };
 const $ = (selector) => document.querySelector(selector);
+const PAGES = {
+  overview: ['Overview', 'A clear view of your agency and its latest work.', ['overview']],
+  requests: ['Client requests', 'Follow incoming inquiries from receipt to final report.', ['requests']],
+  projects: ['Projects & tasks', 'Review assessment runs and the work assigned to your team.', ['projects', 'tasks']],
+  team: ['Team', 'Seven specialists and one Project Manager. Current activity, one row each.', ['employees']],
+  reports: ['Reports', 'Review completed work and open available report links.', ['reports']],
+  history: ['History', 'Previous and archived runs, with their original outcomes preserved.', ['projects', 'tasks']],
+  chat: ['Ask the team', 'Ask questions about the recorded task ledger.', ['chat']],
+  assign: ['Assign a task', 'Give your team a clear request and expected result.', ['assign']],
+};
+state.page = 'overview';
+function showRoute() {
+  const [title, subtitle, sections] = PAGES[state.page] || PAGES.overview;
+  $('#page-title').textContent = title;
+  $('#page-subtitle').textContent = subtitle;
+  for (const id of ['overview', 'requests', 'projects', 'employees', 'tasks', 'assign', 'reports', 'chat'])
+    $('#' + id).hidden = !sections.includes(id);
+  for (const page of Object.keys(PAGES).filter(page => page !== 'assign')) {
+    $('#nav-' + page).classList.toggle('active', page === state.page);
+    $('#nav-' + page).setAttribute('aria-current', page === state.page ? 'page' : 'false');
+  }
+  $('#scope-panel').hidden = ['chat', 'assign'].includes(state.page);
+  $('#run-management').hidden = !['projects', 'history'].includes(state.page);
+  $('#projects-heading').textContent = state.page === 'history' ? 'Historical projects' : 'Projects';
+}
+function navigate(page, updateHash = true) {
+  page = ({ employees: 'team', tasks: 'projects' })[page] || page;
+  state.page = Object.hasOwn(PAGES, page) ? page : 'overview';
+  const view = state.page === 'history' ? 'history' : 'current';
+  if (state.view !== view) {
+    state.view = view; state.runKey = ''; state.selectedRuns.clear(); state.runStatus = 'all'; state.runSearch = '';
+    $('#run-search').value = '';
+  }
+  if (updateHash && window.location && window.location.hash !== '#' + state.page)
+    window.location.hash = state.page;
+  renderAll();
+}
 
 function updateRunModeForm() {
   const fullRun = $("#run-eight-agents").checked;
@@ -156,12 +193,16 @@ function renderEmployees() {
       : stale ? "No recent update: " + stale.title + " · " + formatDate(stale.updatedAt || stale.timestamp)
       : blocked ? "Blocked on: " + blocked.title
       : next ? "Next in queue: " + next.title : latestCompleted ? "Latest completed: " + latestCompleted.title : "No open task assigned";
-    return '<article class="employee-card">' +
-      '<div class="employee-title"><h3>' + employee.name + '</h3>' +
-      '<span class="status-pill ' + statusClass + '">' + status + "</span></div>" +
-      '<p class="current-task">' + escapeHtml(currentLabel) + "</p>" +
-      ((olderBlockedCount || olderStaleCount) ? '<p class="muted">Earlier work: ' + olderBlockedCount + ' blocked, ' + olderStaleCount + ' stale. Review in Task board or archive finished runs.</p>' : '') +
-      '<span class="output-count">' + completed + " output(s) completed today</span></article>";
+    const initials = employee.name.split(' ').slice(0, 2).map(word => word[0]).join('');
+    const earlier = theirTasks.filter(task => task.status === 'Blocked' || (task.status === 'In Progress' && task.staleProgress));
+    const history = earlier.length ? '<details class="earlier-work"><summary>' + earlier.length + ' to review</summary><ul>' +
+      earlier.slice(0, 5).map(task => '<li>' + escapeHtml(task.title) + ' · ' + escapeHtml(task.status) + '</li>').join('') +
+      '</ul><a class="inline-link" href="#projects">Review tasks →</a></details>' : '<span class="muted">—</span>';
+    return '<tr><th scope="row"><span class="team-person"><span class="employee-avatar" aria-hidden="true">' + initials + '</span><span>' + employee.name +
+      '<small>' + (employee.id === 'project-manager' ? 'Coordination & reporting' : 'Specialist') + '</small></span></span></th>' +
+      '<td><span class="status-pill ' + statusClass + '">' + status + '</span></td>' +
+      '<td class="team-latest">' + escapeHtml(currentLabel) + '</td><td class="team-total">' + completed +
+      '<small>outputs</small></td><td>' + history + '</td></tr>';
   }).join("");
 }
 
@@ -369,7 +410,7 @@ function changeView(view) {
   state.runSearch = "";
   $("#run-search").value = "";
   state.selectedRuns.clear();
-  renderAll();
+  navigate(view === 'history' ? 'history' : state.page === 'history' ? 'projects' : state.page);
 }
 
 function previewArchive(action) {
@@ -439,11 +480,36 @@ $("#archive-confirm").addEventListener("click", async () => {
 });
 
 function renderAll() {
+  showRoute();
   renderRunControls();
   renderMetrics();
   renderEmployees();
   renderTasks();
   renderReports();
+  renderProjectLists();
+}
+
+function projectRow(run) {
+  const status = runStatus(run);
+  const label = { active: 'Queued / running', blocked: 'Needs attention', completed: 'Completed', other: 'Recorded' }[status];
+  return '<article class="project-row"><div class="project-symbol" aria-hidden="true">▤</div><div class="project-info"><strong>' +
+    escapeHtml(run.label || 'Assessment') + '</strong><small>' + escapeHtml(run.projectId || run.key) + '</small><span>' +
+    run.completedCount + ' / ' + run.taskCount + ' tasks completed · ' + escapeHtml(formatDate(run.updatedAt)) + '</span></div>' +
+    '<span class="status-pill ' + ({ active:'in-progress', blocked:'blocked', completed:'completed', other:'idle' })[status] + '">' + label +
+    '</span><button class="button secondary" data-open-run="' + escapeAttribute(run.key) + '">Open<span class="visually-hidden"> ' + escapeHtml(run.projectId || run.label) + '</span> →</button></article>';
+}
+function renderProjectLists() {
+  const runs = viewRuns().filter(run => !state.runKey || run.key === state.runKey);
+  const render = list => list.length ? list.map(projectRow).join('') : '<p class="empty-state">No projects in this view.</p>';
+  $('#recent-projects').innerHTML = render(runs.slice(0, 5));
+  $('#project-list').innerHTML = render(runs);
+  const requests = runs.filter(run => state.tasks.some(task => task.runKey === run.key && String(task.executionMode || '').startsWith('email-intake')));
+  $('#request-count').textContent = requests.length + ' request(s)';
+  $('#request-list').innerHTML = requests.length ? render(requests) : '<p class="empty-state">No email requests recorded in this view.</p>';
+  const reports = contextTasks().filter(task => task.employeeId === 'project-manager' && task.status === 'Completed' && safeWebLink(task.resultLink));
+  $('#report-library').innerHTML = reports.length ? reports.map(task => '<article class="project-row"><div class="project-info"><strong>' + escapeHtml(task.title) +
+    '</strong><small>' + escapeHtml(task.projectId || 'Completed report') + '</small></div><a class="button secondary" target="_blank" rel="noopener" href="' + escapeAttribute(task.resultLink) + '">Open report location ↗</a></article>').join('') :
+    '<p class="empty-state">No completed PM report links in this view.</p>';
 }
 
 async function loadTasks() {
@@ -644,9 +710,27 @@ $("#chat-employee").addEventListener("change", async () => {
 });
 $("#export-csv").addEventListener("click", downloadCsv);
 $("#jump-to-assign").addEventListener("click", () => {
-  $("#assign").scrollIntoView({ behavior: "smooth" });
+  navigate('assign');
   $("#assign input[name=title]").focus();
 });
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-open-run]');
+  if (!button) return;
+  const run = state.runs.find(item => item.key === button.dataset.openRun);
+  if (!run) return;
+  navigate(run.historical ? 'history' : 'projects');
+  state.runKey = run.key;
+  state.selectedRuns.clear();
+  renderAll();
+  $('#tasks').scrollIntoView({ behavior: 'smooth' });
+});
+window.addEventListener('hashchange', () => {
+  navigate(window.location.hash.slice(1), false);
+  $('#page-title').focus();
+  window.scrollTo?.({ top: 0 });
+});
+navigate(window.location?.hash?.slice(1) || 'overview', false);
 
 populateEmployeeSelects();
 api("/api/tasks").then(async (result) => {
@@ -691,4 +775,4 @@ window.addEventListener("pageshow", (event) => {
 window.addEventListener("online", refreshVisibleDashboard);
 
 // Keep the shared ledger current while the dashboard remains open.
-setInterval(refreshVisibleDashboard, 15_000);
+setInterval(refreshVisibleDashboard, 3_000);

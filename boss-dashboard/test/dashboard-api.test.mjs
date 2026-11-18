@@ -2,6 +2,34 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDashboardHandler } from "../server.mjs";
 
+test('live API refresh exposes intermediate specialist progress after two seconds', async t => {
+ const keys=['BOSS_PASSWORD','SESSION_SECRET','GOOGLE_SPREADSHEET_ID','GOOGLE_SERVICE_ACCOUNT_JSON'];
+ const old=keys.map(key=>process.env[key]);
+ Object.assign(process.env,{BOSS_PASSWORD:'local-test-password',SESSION_SECRET:'x'.repeat(40),GOOGLE_SPREADSHEET_ID:'test-book',GOOGLE_SERVICE_ACCOUNT_JSON:'{}'});
+ t.after(()=>keys.forEach((key,i)=>old[i]===undefined?delete process.env[key]:process.env[key]=old[i]));
+ let time=0, reads=0;
+ let tasks=[{taskId:'stage-1',parentTaskId:'stage-1',employeeId:'client-manager',status:'In Progress'}];
+ const handler=createDashboardHandler({now:()=>time,loadTasks:async()=>{reads++;return structuredClone(tasks);},loadEvents:async()=>[]});
+ const request=async (url,method='GET',body,cookie='')=>{
+  let status,headers,value;
+  await handler({url,method,headers:{host:'dashboard.test',origin:'http://dashboard.test',cookie},async *[Symbol.asyncIterator](){if(body)yield Buffer.from(JSON.stringify(body));}},
+   {headersSent:false,writeHead(code,h){status=code;headers=h;this.headersSent=true;},end(data){value=data;}});
+  return {status,headers,data:JSON.parse(value)};
+ };
+ const login=await request('/api/login','POST',{password:process.env.BOSS_PASSWORD});
+ const cookie=login.headers['Set-Cookie'] || login.headers['set-cookie'];
+ const session=String(cookie).split(';')[0];
+ assert.equal((await request('/api/tasks','GET',null,session)).data.tasks[0].status,'In Progress');
+ tasks=[{...tasks[0],status:'Completed'},{taskId:'stage-2',parentTaskId:'stage-1',employeeId:'technical-controls-analyst',status:'In Progress'}];
+ time=1000;
+ await request('/api/tasks','GET',null,session);
+ assert.equal(reads,1);
+ time=3000;
+ const refreshed=await request('/api/tasks','GET',null,session);
+ assert.equal(refreshed.data.tasks.find(t=>t.taskId==='stage-2').status,'In Progress');
+ assert.equal(reads,2);
+});
+
 test("archive HTTP handler enforces login/origin, persists metadata, and preserves tasks", async t => {
   const vars = { BOSS_PASSWORD: "local-test-password", SESSION_SECRET: "x".repeat(40), GOOGLE_SPREADSHEET_ID: "test-book", GOOGLE_SERVICE_ACCOUNT_JSON: "{}" };
   const old = Object.fromEntries(Object.keys(vars).map(key => [key, process.env[key]]));

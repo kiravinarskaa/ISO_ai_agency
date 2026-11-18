@@ -4,6 +4,14 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { executionLedgerToTasks } from "./execution-ledger.mjs";
+import { taskAnswer } from "./task-answers.mjs";
+import { createReadCache } from "./read-cache.mjs";
+import { answerWithOllama } from "./ai-chat.mjs";
+import { readChatWorkbook } from "./sheet-chat-context.mjs";
+import { readTaskSnapshot } from "./task-snapshot.mjs";
+const workbookReads = createReadCache({ ttl: 60_000 });
+const tabChecks = createReadCache({ ttl: 600_000 });
+const chatReads = createReadCache();
 import { decorateRuns, scopedTasks } from "./public/run-model.js";
 import { ARCHIVE_TAB, ARCHIVE_HEADERS, archiveEventsFromRows, changeRunArchives } from "./run-archives.mjs";
 
@@ -74,6 +82,10 @@ function spreadsheetId() {
 }
 
 async function ensureTab(sheets, title, headers) {
+  return tabChecks.read(spreadsheetId() + ':' + title, () => verifyTab(sheets, title, headers));
+}
+
+async function verifyTab(sheets, title, headers) {
   const bookId = spreadsheetId();
   const book = await sheets.spreadsheets.get({
     spreadsheetId: bookId,
@@ -182,24 +194,15 @@ function isWebLink(value) {
 }
 
 async function getTasks() {
-  const rows = await readRows(TASK_TAB, TASK_HEADERS);
+  const sheets = await getSheetsClient();
+  await ensureTab(sheets, TASK_TAB, TASK_HEADERS);
+  const includeLedger = await tabChecks.read(spreadsheetId() + ':ledger-present', async () => {
+    const book = await sheets.spreadsheets.get({ spreadsheetId: spreadsheetId(), fields: 'sheets.properties.title' });
+    return (book.data.sheets || []).some(s => s.properties?.title === EXECUTION_LEDGER_TAB);
+  });
+  const { rows, executionRows } = await readTaskSnapshot(sheets, spreadsheetId(), includeLedger);
   const assignedTasks = rows.map(taskFromRow).filter((task) => task.taskId);
-  let executionTasks = [];
-
-  // The agency runner publishes employee stages to the original Ledger tab.
-  // Read it separately so a missing or malformed execution tab cannot stop
-  // the dashboard's normal Task Ledger from loading.
-  try {
-    const sheets = await getSheetsClient();
-    const result = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId(),
-      range: quoteTab(EXECUTION_LEDGER_TAB) + "!A1:H",
-    });
-    executionTasks = executionLedgerToTasks(result.data.values || []);
-  } catch (error) {
-    // Do not let a missing execution tab interfere with normal task loading.
-    console.warn("Google Sheet execution progress is unavailable.");
-  }
+  const executionTasks = executionLedgerToTasks(executionRows);
 
   // Keep tasks manually assigned in Task Ledger and show workflow progress
   // from Ledger in the same employee cards and task list.
@@ -286,7 +289,7 @@ async function saveChat(conversationId, speaker, employeeId, message) {
 }
 
 async function getChatHistory(conversationId) {
-  const rows = await readRows(CHAT_TAB, CHAT_HEADERS);
+  const rows = await chatReads.read(spreadsheetId(), () => readRows(CHAT_TAB, CHAT_HEADERS));
   return rows
     .filter((row) => row.cells[0] === conversationId)
     .map((row) => ({
@@ -401,12 +404,15 @@ function startOfWeek(date = new Date()) {
 
 function answerFromTasks(question, selectedEmployee, tasks) {
   const text = question.toLowerCase();
-  const relevant = selectedEmployee
+  const relevant = selectedEmployee && selectedEmployee !== "project-manager"
     ? tasks.filter((task) => task.employeeId === selectedEmployee)
     : tasks;
-  const label = selectedEmployee
+  const label = selectedEmployee && selectedEmployee !== "project-manager"
     ? EMPLOYEES.find((employee) => employee.id === selectedEmployee)?.name || selectedEmployee
     : "the agency";
+
+  const evidenceAnswer = taskAnswer(question, relevant, { label });
+  if (evidenceAnswer && !/\b(today|week)\b/.test(text)) return evidenceAnswer;
 
   if (text.includes("block")) {
     const blocked = relevant.filter((task) => task.status === "Blocked");
@@ -474,7 +480,7 @@ function answerFromTasks(question, selectedEmployee, tasks) {
       STATUSES.map((status) => status + " " + counts[status]).join(", ") + ".";
   }
 
-  return "I can answer from the task ledger about task counts, running work, blocked reasons, and this week's completions. I don't have enough ledger data to answer that question yet.";
+  return "I could not match that question to a supported task query. Try: What runs are incomplete? What is running now? Which tasks are blocked? What reports are available? Answers use the selected dashboard scope; choose Project Manager for an agency-wide summary.";
 }
 
 async function serveFile(response, filename, contentType) {
@@ -728,10 +734,16 @@ async function handleApi(request, response, url, services) {
       return;
     }
     const data = await dashboardData(services);
-    const answer = answerFromTasks(question, employeeId, scopedTasks(data.tasks,
-      body.view === "history" ? "history" : "current", typeof body.runKey === "string" ? body.runKey : ""));
+    const answer = await answerWithOllama({ question, employeeId,
+      workbook: await workbookReads.read(spreadsheetId(), async () => readChatWorkbook(await getSheetsClient(), spreadsheetId())),
+      tasks: scopedTasks(data.tasks, body.view === "history" ? "history" : "current", typeof body.runKey === "string" ? body.runKey : ""),
+      history: await getChatHistory(conversationId),
+      scope: (body.view === "history" ? "history" : "current") + (body.runKey ? ' / selected run' : ''),
+    });
     await saveChat(conversationId, "Boss", employeeId, question);
     await saveChat(conversationId, employeeId || "project-manager", employeeId, answer);
+    chatReads.clear();
+    // Workbook snapshots intentionally remain cached for up to one minute.
     json(response, 200, { answer });
     return;
   }
@@ -750,6 +762,12 @@ function missingSheetSettings() {
 
 export function createDashboardHandler(services = {}) {
 const dependencies = { loadTasks: getTasks, loadEvents: readArchiveEvents, appendEvents: appendArchiveEvents, ...services };
+const snapshotReads = createReadCache({ ttl: 2_000, now: services.now || Date.now });
+const archiveReads = createReadCache({ ttl: 30_000, now: services.now || Date.now });
+const cachedDependencies = { ...dependencies,
+  loadTasks: () => snapshotReads.read('tasks', dependencies.loadTasks),
+  loadEvents: () => archiveReads.read('events', dependencies.loadEvents),
+};
 return async (request, response) => {
   try {
     const url = new URL(request.url || "/", "http://" + (request.headers.host || "localhost"));
@@ -760,7 +778,15 @@ return async (request, response) => {
         });
         return;
       }
-      await handleApi(request, response, url, dependencies);
+      // Archive writes retain fresh status checks. Chat can reuse the same
+      // short-lived snapshot as polling; other writes invalidate that snapshot.
+      const mutation = request.method !== 'GET' && url.pathname !== '/api/chat';
+      if (mutation) { snapshotReads.clear(); archiveReads.clear(); }
+      try {
+        await handleApi(request, response, url, mutation ? dependencies : cachedDependencies);
+      } finally {
+        if (mutation) { snapshotReads.clear(); archiveReads.clear(); }
+      }
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {

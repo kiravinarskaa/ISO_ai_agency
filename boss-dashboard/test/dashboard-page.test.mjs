@@ -25,16 +25,17 @@ test("page switches scope, previews/cancels archive, archives and restores witho
   const tasks = [
     { taskId: "old", projectId: "TEST", employeeId: "project-manager", title: '<script>alert("test")</script>', description: "Historical failed test", status: "Blocked", priority: "Normal", timestamp: "2026-11-12T08:00:00Z" },
     { taskId: "latest", projectId: "TEST", employeeId: "project-manager", title: "Current report", description: "Validated", status: "Completed", priority: "Normal", timestamp: "2026-11-16T08:00:00Z" },
-    { taskId: "abandoned", projectId: "OLDTEST", employeeId: "client-manager", title: "Old test", description: "No evidence", status: "Blocked", priority: "Normal", timestamp: "2026-11-13T08:00:00Z" },
+    { taskId: "abandoned", projectId: "OLDTEST", employeeId: "client-manager", executionMode: "email-intake", title: "Old test", description: "No evidence", status: "Blocked", priority: "Normal", timestamp: "2026-11-13T08:00:00Z" },
   ];
   const original = JSON.stringify(tasks);
   const events = [];
   const writes = [];
   const local = new Map();
+  const documentEvents = {}, windowEvents = {};
   const context = vm.createContext({ scopedTasks, employeeWork, runStatus, filterRuns, selectRunKeys, crypto: webcrypto, URL, Blob,
     localStorage: { getItem: key => local.get(key), setItem: (key, value) => local.set(key, value) },
-    document: { querySelector: node, visibilityState: "visible", addEventListener() {} },
-    window: { addEventListener() {} }, setInterval() {},
+    document: { querySelector: node, visibilityState: "visible", addEventListener(type, fn) { documentEvents[type] = fn; } },
+    window: { location: { hash: '' }, scrollTo() {}, addEventListener(type, fn) { windowEvents[type] = fn; } }, setInterval() {},
     fetch: async (url, options = {}) => {
       if (url === "/api/tasks") return new Response(JSON.stringify({ ...decorateRuns(tasks, events), connected: true, archiveAvailable: true }));
       if (url.startsWith("/api/chat/history")) return new Response(JSON.stringify({ messages: [] }));
@@ -97,4 +98,42 @@ test("page switches scope, previews/cancels archive, archives and restores witho
   await node("#view-current").listeners.click();
   assert.equal(String(node("#count-blocked").textContent), "1");
   assert.equal(JSON.stringify(tasks), original);
+  // Menu routes render separate workspaces without writing or changing task data.
+  const writeCount=writes.length;
+  vm.runInContext('navigate("team", false)',context);
+  assert.equal(node('#employees').hidden,false);
+  assert.equal(node('#overview').hidden,true);
+  assert.equal(node('#tasks').hidden,true);
+  assert.equal(node('#page-title').textContent,'Team');
+  assert.match(node('#employee-cards').innerHTML,/<tr><th scope="row">/);
+  assert.ok(!node('#employee-cards').innerHTML.includes('employee-card'));
+  vm.runInContext('navigate("requests", false)',context);
+  assert.equal(node('#requests').hidden,false);
+  assert.match(node('#request-list').innerHTML,/OLDTEST/);
+  assert.ok(!node('#request-list').innerHTML.includes('Current report'));
+  documentEvents.click({target:{closest:()=>({dataset:{openRun:'task:latest'}})}});
+  assert.equal(node('#page-title').textContent,'Projects & tasks');
+  assert.equal(vm.runInContext('state.runKey',context),'task:latest');
+  assert.match(node('#task-list').innerHTML,/Current report/);
+  assert.ok(!node('#task-list').innerHTML.includes('No evidence'));
+  context.window.location.hash='#team';
+  windowEvents.hashchange();
+  assert.equal(node('#page-title').textContent,'Team');
+  vm.runInContext('navigate("history", false)',context);
+  assert.equal(node('#projects').hidden,false);
+  assert.equal(node('#tasks').hidden,false);
+  assert.match(node('#task-list').innerHTML,/Historical failed test/);
+  assert.equal(node('#run-management').hidden,false);
+  vm.runInContext('navigate("reports", false)',context);
+  assert.equal(node('#reports').hidden,false);
+  assert.equal(node('#employees').hidden,true);
+  vm.runInContext('navigate("assign", false)',context);
+  assert.equal(node('#assign').hidden,false);
+  assert.equal(node('#scope-panel').hidden,true);
+  vm.runInContext('navigate("employees", false)',context);
+  assert.equal(node('#page-title').textContent,'Team'); // Legacy bookmarks.
+  vm.runInContext('navigate("unknown", false)',context);
+  assert.equal(node('#overview').hidden,false);
+  assert.equal(writes.length,writeCount);
+  assert.equal(JSON.stringify(tasks),original);
 });

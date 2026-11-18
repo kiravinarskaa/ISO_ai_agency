@@ -1,5 +1,21 @@
 # ISO 27001 AI Agency Boss Dashboard
 
+## Navigation redesign
+
+`feature/dashboard-navigation` adds separate Overview, Client requests, Projects
+& tasks, Team, Reports and History views. Ask the team and task assignment remain
+available. Hash routes support direct links and browser back/forward; old
+`#employees` and `#tasks` bookmarks map to their new views.
+
+The Team view is a compact eight-row table with expandable earlier-work details.
+Project cards open the matching task scope, email inquiries have their own list,
+and completed PM report links appear under Reports. All lists use existing task
+records; they do not claim email delivery or report availability without data.
+Archive previews, login, task edits and automatic refresh keep their existing
+behavior. Only deploy the existing public ISO_ai_agency service to this UI branch;
+agent-worker can remain on feature/dashboard-recovery-sync. No new variables,
+domain or service are required. Browser visual verification remains pending.
+
 ## Completed recovery runs
 
 The worker now reconciles an existing email workflow's Sheet rows after a manual
@@ -165,4 +181,36 @@ this week. Questions outside those records receive an explicit limitation.
 Railway's Free plan includes a monthly usage credit, not unlimited compute. The
 dashboard is request-driven; a separate continuously running Codex worker may use
 more than the free credit. Review Railway usage before enabling a worker service.
+
+# Conversational AI chat
+
+Live dashboard progress polls every three seconds while visible. Task snapshots
+are shared across browsers for two seconds; Task Ledger and Ledger are fetched
+in a single batch read. Archive history uses a separate 30-second cache. Archive
+mutations still re-read current task states and invalidate both caches. Worker
+stage callbacks already persist start/completion states; no worker change is
+needed. Polling may skip stages shorter than the refresh interval and is not a
+guarantee of observing every intermediate state.
+
+Chat also reads Ledger, Task Ledger, Chat History, Run Outputs, Dashboard Archives,
+and Email Delivery across the configured spreadsheet, independently of UI scope.
+A metadata lookup discovers existing tabs; one values.batchGet reads them without
+creating missing tabs. Workbook reads share a 60-second cache. All rows are read;
+question-ranked evidence sent to the model is limited to 16,000 characters per tab.
+Tab availability, total/included row counts and truncation are disclosed to the
+model. Answers are instructed to cite tab names and original row numbers. The
+model has read-only context and cannot modify the sheet or send mail.
+
+Ask the team uses Ollama for natural language answers from the selected dashboard
+task scope and the last six conversation messages. Project Manager covers all
+roles; specialists see their own task records. No action tools are provided.
+Each submitted question makes one model request; page refreshes do not.
+
+On the public ISO_ai_agency service, configure OLLAMA_BASE_URL (the same HTTPS
+/v1 endpoint used by the worker), OLLAMA_API_KEY, and DASHBOARD_CHAT_MODEL (or
+CODEX_MODEL). Reuse Railway variable references where possible. Never put keys
+in source files. Provider/configuration failures are shown as errors rather than
+being replaced with keyword-based answers. Detailed context is limited to the
+150 most recently updated scoped tasks, with full task status totals and an
+explicit truncation indicator. Task records cannot verify email delivery.
 
